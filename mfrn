@@ -67,18 +67,18 @@ def rename_files(setup: dict[str, str]):
         if os.path.isdir(file):
             continue
 
-        file_tmp_mv = file + '.__tmp_active__'
-        file_list.append([file, file_tmp_mv])
+        file_tmp_active = file + '.__tmp_active__'
+        file_list.append((file, file_tmp_active))
 
     numwidth = int(math.log(len(file_list), 10)) + 1
 
     # we move to a temporily name before moving to dest, because
     # so we get rid off problems due conflicting existing file names,
     # .e.g. due aborted further program runs etc.
-    for file_pair in file_list:
+    for n, file_pair in enumerate(file_list, start=1):
         file_real, file_tmp_active = file_pair[:]
 
-        # shutil.move(file_real, file_tmp_active)
+        shutil.move(file_real, file_tmp_active)
 
     template = setup['template'].replace('%d', f'%0{numwidth}d')
 
@@ -86,10 +86,10 @@ def rename_files(setup: dict[str, str]):
         file_real, file_tmp_active = file_pair[:]
         file_dest = template % n
 
-        # shutil.move(file_tmp_mv, file_dest)
-        print(f' {file_real} -> {file_dest}', file=sys.stderr)
+        print(f'  {file_real} -> {file_dest}', file=sys.stderr)
+        shutil.move(file_tmp_active, file_dest)
 
-    print('Done.')
+    print('Done.', file=sys.stderr)
 
 
 if __name__ == '__main__':
