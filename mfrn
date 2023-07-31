@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+
+# ****************************************************************************
+# DESCRIPTION
+#   Simple mass renaming of files by specifyning a source pattern
+#   with a %d number parameter
+
+# bugs and hints: lrsklemstein@gmail.com
+# ****************************************************************************
+
+
+import glob
+import math
+import os.path
+import shutil
+import sys
+
+
+def main():
+    setup = get_setup_or_exit_with_usage()
+
+    rename_files(setup)
+
+    sys.exit(0)
+
+
+def print_usage_and_exit(rc=2):
+    progname = os.path.basename(sys.argv[0])
+
+    usage = (
+        '\n'
+        'mfrn == mass file renamer\n'
+        '\n'
+        f'usage: {progname} DIR dest_pattern [source_pattern]\n'
+        '\n'
+        '           DIR  ->  directory to operate on (e.g. "." or "~/mydir")\n'
+        '      template  ->  definee the files to be created,'
+        'use %d for numbering\n'
+        '                    (e.g.  "myfile_%d.txt")\n'
+        'source_pattern  ->  optional glob pattern for files '
+        'to be renamed, default is *\n'
+    )
+
+    print(usage, file=sys.stderr)
+    sys.exit(2)
+
+
+def get_setup_or_exit_with_usage() -> dict[str, str]:
+    if not 3 <= len(sys.argv) <= 4:
+        print_usage_and_exit()
+
+    setup = {
+        'dir': sys.argv[1],
+        'template': sys.argv[2],
+        'source_pattern': sys.argv[3] if len(sys.argv) == 4 else '*',
+    }
+
+    return setup
+
+
+def rename_files(setup: dict[str, str]):
+    file_list = []
+
+    glob_pattern = setup['dir'] + '/' + setup['source_pattern']
+
+    for file in glob.glob(glob_pattern):
+        if os.path.isdir(file):
+            continue
+
+        file_tmp_mv = file + '.__tmp_active__'
+        file_list.append([file, file_tmp_mv])
+
+    numwidth = int(math.log(len(file_list), 10)) + 1
+
+    # we move to a temporily name before moving to dest, because
+    # so we get rid off problems due conflicting existing file names,
+    # .e.g. due aborted further program runs etc.
+    for file_pair in file_list:
+        file_real, file_tmp_active = file_pair[:]
+
+        # shutil.move(file_real, file_tmp_active)
+
+    template = setup['template'].replace('%d', f'%0{numwidth}d')
+
+    for n, file_pair in enumerate(file_list, start=1):
+        file_real, file_tmp_active = file_pair[:]
+        file_dest = template % n
+
+        # shutil.move(file_tmp_mv, file_dest)
+        print(f' {file_real} -> {file_dest}', file=sys.stderr)
+
+    print('Done.')
+
+
+if __name__ == '__main__':
+    main()
