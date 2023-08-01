@@ -24,7 +24,7 @@ abort() {
 
 if [ $# -ne 1 ]
 then
-    echo "Usage: $PROG pyprog" >&2
+    echo "Usage: $PROG PYPROG" >&2
     exit 2
 fi
 
