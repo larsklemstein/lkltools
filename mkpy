@@ -1,5 +1,14 @@
 #!/bin/bash -eu
 
+# ****************************************************************************
+# DESCRIPTION
+#   Staffold a simple python3 program incl. argparse and logging
+#
+#
+# Todo: create a sample logging ini
+#
+# bugs and hints: lrsklemstein@gmail.com
+# ****************************************************************************
 
 readonly PROG=${0##*/}
 

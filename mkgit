@@ -1,5 +1,13 @@
 #!/bin/bash -eu
 
+# ****************************************************************************
+#  DESCRIPTION
+#    Create a local git repo dir and take care about the master vs. main
+#    trouble.
+#
+# bugs and hints: lrsklemstein@gmail.com
+# ****************************************************************************
+
 readonly PROG=${0##*/}
 
 
