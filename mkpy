@@ -1,0 +1,117 @@
+#!/bin/bash -eu
+
+
+readonly PROG=${0##*/}
+
+
+msg() {
+    echo "[$PROG] $*" >&2
+}
+
+abort() {
+    msg "$*"
+    exit 1
+}
+
+if [ $# -ne 1 ]
+then
+    echo "Usage: $PROG pyprog" >&2
+    exit 2
+fi
+
+pyprog="$1"
+
+[[ "$pyprog" == *.py ]] || pyprog="$pyprog.py"
+
+if [ -f "$pyprog" ]
+then
+    abort "\"$pyprog\" already exist"
+fi
+
+email=$(git config --global user.email 2>/dev/null) || true
+[ -n "$email" ] || emai="<unknown>"
+
+/bin/cat >$pyprog <<EOF
+#!/usr/bin/env python3
+
+# ****************************************************************************
+# DESCRIPTION
+#    Does this and that...
+
+# bugs and hints: ${email}
+# ****************************************************************************
+
+
+import argparse
+import logging
+import logging.config
+import sys
+
+
+__log_level_tab = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL,
+}
+
+
+def main():
+    setup = get_setup_or_exit_with_usage()
+
+    init_logging(setup['log_cfg_file'], setup['log_level'])
+
+    logger = logging.getLogger(__name__)
+
+    logger.info("Ok, let's have some fun...")
+
+    sys.exit(0)
+
+
+def get_setup_or_exit_with_usage() -> dict[str, any]:
+    parser = argparse.ArgumentParser(
+        description='Just another program',
+    )
+
+    parser.add_argument(
+        '--log_cfg', dest='log_cfg_file',
+        help='optional logging cfg in ini format',
+    )
+
+    parser.add_argument(
+        '--log_level',
+        help='define log level (ignored if --log_cfg is used)',
+        default='info', choices=list(__log_level_tab.keys()),
+    )
+
+    # fixed argument (example)
+    parser.add_argument('ARG')
+
+    args = vars(parser.parse_args())
+
+    if args['log_cfg_file'] is None:
+        args['log_cfg_file'] = ''
+
+    return args
+
+
+def init_logging(log_cfg_file: str, log_level: str) -> None:
+    """Creates either a logger by cfg file or a default instance
+    with given log level by arg --log_level (otherwise irgnored)
+    """
+    if log_cfg_file == '':
+        logging.basicConfig(level=__log_level_tab[log_level])
+    else:
+        logging.config.fileConfig(log_cfg_file)
+
+
+if __name__ == '__main__':
+    main()
+EOF
+
+chmod +x $pyprog
+
+msg "-> $pyprog"
+
+
