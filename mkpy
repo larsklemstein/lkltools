@@ -38,7 +38,7 @@ then
 fi
 
 email=$(git config --global user.email 2>/dev/null) || true
-[ -n "$email" ] || emai="<unknown>"
+[ -n "$email" ] || email="<unknown>"
 
 /bin/cat >$pyprog <<EOF
 #!/usr/bin/env python3
