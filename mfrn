@@ -60,8 +60,9 @@ def get_setup_or_exit_with_usage() -> dict[str, str]:
 
 def rename_files(setup: dict[str, str]):
     file_list = []
-
-    glob_pattern = setup['dir'] + '/' + setup['source_pattern']
+    
+    sep = os.path.sep
+    glob_pattern = setup['dir'] + sep + setup['source_pattern']
 
     for file in glob.glob(glob_pattern):
         if os.path.isdir(file):
