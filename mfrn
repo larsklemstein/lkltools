@@ -2,8 +2,7 @@
 
 # ****************************************************************************
 # DESCRIPTION
-#   Simple mass renaming of files by specifying a source pattern
-#   with a %d number parameter
+#   Simple file mass renaming. Please see usage for further details.
 #
 # bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
