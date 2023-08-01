@@ -4,7 +4,7 @@
 # DESCRIPTION
 #   Simple mass renaming of files by specifyning a source pattern
 #   with a %d number parameter
-
+#
 # bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
 
@@ -24,7 +24,7 @@ def main():
     sys.exit(0)
 
 
-def print_usage_and_exit(rc=2):
+def print_usage_and_exit(rc: int = 2):
     progname = os.path.basename(sys.argv[0])
 
     usage = (
