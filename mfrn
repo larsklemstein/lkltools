@@ -32,7 +32,7 @@ def print_usage_and_exit(rc: int = 2):
         '\n'
         'mfrn == mass file renamer\n'
         '\n'
-        f'usage: {progname} DIR dest_pattern [source_pattern]\n'
+        f'usage: {progname} DIR template [source_pattern]\n'
         '\n'
         '           DIR  ->  directory to operate on (e.g. "." or "~/mydir")\n'
         '      template  ->  define the new filename scheme, '
