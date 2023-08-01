@@ -57,24 +57,17 @@ import logging.config
 import sys
 
 
-__log_level_tab = {
-    'debug': logging.DEBUG,
-    'info': logging.INFO,
-    'warning': logging.WARNING,
-    'error': logging.ERROR,
-    'critical': logging.CRITICAL,
-}
-
-
 def main():
     setup = get_setup_or_exit_with_usage()
 
-    init_logging(setup['log_cfg_file'], setup['log_level'])
+    init_logging(setup)
 
     logger = logging.getLogger(__name__)
 
     logger.info("Ok, let's have some fun...")
+    logger.debug('a debug message...')
 
+    logger.info('rc=0')
     sys.exit(0)
 
 
@@ -83,36 +76,36 @@ def get_setup_or_exit_with_usage() -> dict[str, any]:
         description='Just another program',
     )
 
-    parser.add_argument(
+    log_group = parser.add_mutually_exclusive_group()
+
+    log_group.add_argument(
+        '-D', '--debug', action='store_true',
+        help='enable debug log level',
+    )
+
+    log_group.add_argument(
         '--log_cfg', dest='log_cfg_file',
         help='optional logging cfg in ini format',
     )
 
-    parser.add_argument(
-        '--log_level',
-        help='define log level (ignored if --log_cfg is used)',
-        default='info', choices=list(__log_level_tab.keys()),
-    )
-
-    # fixed argument (example)
-    parser.add_argument('ARG')
+    parser.add_argument('EXAMPLE_ARG')
 
     args = vars(parser.parse_args())
-
-    if args['log_cfg_file'] is None:
-        args['log_cfg_file'] = ''
+    args = {k: '' if v is None else v for k, v in args.items()}
 
     return args
 
 
-def init_logging(log_cfg_file: str, log_level: str) -> None:
+def init_logging(setup: dict[str, any]) -> None:
     """Creates either a logger by cfg file or a default instance
     with given log level by arg --log_level (otherwise irgnored)
+
     """
-    if log_cfg_file == '':
-        logging.basicConfig(level=__log_level_tab[log_level])
+    if setup['log_cfg_file'] == '':
+        log_level = logging.DEBUG if setup['debug'] else logging.INFO
+        logging.basicConfig(level=log_level)
     else:
-        logging.config.fileConfig(log_cfg_file)
+        logging.config.fileConfig(setup['log_cfg_file'])
 
 
 if __name__ == '__main__':
