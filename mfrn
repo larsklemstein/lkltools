@@ -2,7 +2,7 @@
 
 # ****************************************************************************
 # DESCRIPTION
-#   Simple mass renaming of files by specifyning a source pattern
+#   Simple mass renaming of files by specifying a source pattern
 #   with a %d number parameter
 #
 # bugs and hints: lrsklemstein@gmail.com
@@ -34,15 +34,19 @@ def print_usage_and_exit(rc: int = 2):
         f'usage: {progname} DIR dest_pattern [source_pattern]\n'
         '\n'
         '           DIR  ->  directory to operate on (e.g. "." or "~/mydir")\n'
-        '      template  ->  definee the files to be created,'
+        '      template  ->  define the new filename scheme, '
         'use %d for numbering\n'
         '                    (e.g.  "myfile_%d.txt")\n'
         'source_pattern  ->  optional glob pattern for files '
         'to be renamed, default is *\n'
     )
 
-    print(usage, file=sys.stderr)
+    eprint(usage)
     sys.exit(2)
+
+
+def eprint(m: str):
+    print(m, file=sys.stderr)
 
 
 def get_setup_or_exit_with_usage() -> dict[str, str]:
@@ -54,6 +58,11 @@ def get_setup_or_exit_with_usage() -> dict[str, str]:
         'template': sys.argv[2],
         'source_pattern': sys.argv[3] if len(sys.argv) == 4 else '*',
     }
+
+    if not '%d' in setup['template'] or \
+            setup['template'].index('%d') != setup['template'].rindex('%d'):
+        eprint('template string must contain exactly one occurence of "%d"')
+        sys.exit(1)
 
     return setup
 
@@ -71,7 +80,14 @@ def rename_files(setup: dict[str, str]):
         file_tmp_active = file + '.__tmp_active__'
         file_list.append((file, file_tmp_active))
 
-    numwidth = int(math.log(len(file_list), 10)) + 1
+    if len(file_list) == 0:
+        if setup['source_pattern'] == '*':
+            eprint('No files found!')
+        else:
+            eprint('No matching files found!')
+        sys.exit(0)
+
+    file_list.sort()
 
     # we move to a temporily name before moving to dest, because
     # so we get rid off problems due conflicting existing file names,
@@ -81,16 +97,27 @@ def rename_files(setup: dict[str, str]):
 
         shutil.move(file_real, file_tmp_active)
 
-    template = setup['template'].replace('%d', f'%0{numwidth}d')
+    numwidth = int(math.log(len(file_list), 10)) + 1
+
+    template = setup['dir'] + sep + \
+               setup['template'].replace('%d', f'%0{numwidth}d')
 
     for n, file_pair in enumerate(file_list, start=1):
         file_real, file_tmp_active = file_pair[:]
         file_dest = template % n
 
-        print(f'  {file_real} -> {file_dest}', file=sys.stderr)
-        shutil.move(file_tmp_active, file_dest)
+        if file_real == file_dest:
+            eprint(f'  [{n}] no action required for {file_dest}!')
 
-    print('Done.', file=sys.stderr)
+            # because at this point we already moved the file to the tmp name,
+            # whe must must move it back to the original
+            # (already matching) name. Sp "no action" is not 100% accurate.
+            shutil.move(file_tmp_active, file_real)
+        else:
+            eprint(f'  [{n}] {file_real} -> {file_dest}')
+            shutil.move(file_tmp_active, file_dest)
+
+    eprint('Done.')
 
 
 if __name__ == '__main__':
