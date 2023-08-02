@@ -14,7 +14,7 @@ readonly PROG=${0##*/}
 
 
 msg() {
-    echo "[$PROG] $*" >&2
+    echo "$*" >&2
 }
 
 abort() {
@@ -45,50 +45,60 @@ email=$(git config --global user.email 2>/dev/null) || true
 
 # ****************************************************************************
 # DESCRIPTION
-#    Does this and that...
+#   Does this and that. And much mure.
 
 # bugs and hints: ${email}
 # ****************************************************************************
 
-
 import argparse
 import logging
-import logging.config
 import sys
 
 
-def main():
-    setup = get_setup_or_exit_with_usage()
+__log_level_default = logging.INFO
 
+
+def main():
+    setup = get_prog_setup_or_exit_with_usage()  # might exit with rc=2
     init_logging(setup)
 
     logger = logging.getLogger(__name__)
 
-    logger.info("Ok, let's have some fun...")
-    logger.debug('a debug message...')
+    try:
+        run(setup)
+    except Exception:
+        logger.critical('Abort, rc=3', exc_info=True)
+        sys.exit(3)
 
-    logger.info('rc=0')
     sys.exit(0)
 
 
-def get_setup_or_exit_with_usage() -> dict[str, any]:
+def get_prog_setup_or_exit_with_usage() -> dict[str, any]:
     parser = argparse.ArgumentParser(
-        description='Just another program',
+        description=(
+            'Some words about what your program actually does'
+        )
     )
 
     log_group = parser.add_mutually_exclusive_group()
 
+    parser.add_argument(
+        'FIX_ARG_EXAMPLE', help='FIX_ARG is for, well: please say it',
+    )
+
+    parser.add_argument(
+        '--optional_arg', help='an example for an optional arg',
+    )
+
     log_group.add_argument(
-        '-D', '--debug', action='store_true',
+        '--debug', action='store_true',
         help='enable debug log level',
     )
 
     log_group.add_argument(
-        '--log_cfg', dest='log_cfg_file',
+        '--log_cfg', dest='log_cfg',
         help='optional logging cfg in ini format',
     )
-
-    parser.add_argument('EXAMPLE_ARG')
 
     args = vars(parser.parse_args())
     args = {k: '' if v is None else v for k, v in args.items()}
@@ -101,11 +111,21 @@ def init_logging(setup: dict[str, any]) -> None:
     with given log level by arg --log_level (otherwise irgnored)
 
     """
-    if setup['log_cfg_file'] == '':
-        log_level = logging.DEBUG if setup['debug'] else logging.INFO
-        logging.basicConfig(level=log_level)
+    if setup['log_cfg'] == '':
+        log_level = logging.DEBUG if setup['debug'] else __log_level_default
+        logging.basicConfig(level=log_level, format='%(message)s')
     else:
-        logging.config.fileConfig(setup['log_cfg_file'])
+        logging.config.fileConfig(setup['log_cfg'])
+
+
+def run(setup: dict[str, any]) -> None:
+    logger = logging.getLogger(__name__)
+
+    #
+    # this is the entry point for what your program actually does...
+    # 
+
+    logger.info(f'Done something...')
 
 
 if __name__ == '__main__':
@@ -114,6 +134,23 @@ EOF
 
 chmod +x $pyprog
 
-msg "-> $pyprog"
+msg "Created $pyprog"
 
+/bin/cat >&2 << EOF
 
+Hints:
+
+- please adjust get_prog_setup_or_exit_with_usage() as this defines the
+  arguments (fixed and optional) your program expect.
+
+- default log log level when not using a logging cfg is defined in program
+  header in __log_level_default (=logging.INFO). So if you want to create a unix like
+  ("no message is a good message") style program, just set this to e.g. logging.WARNING.
+  Default basic logging output is just text (no log level, no date etc.).
+
+- normally you do not need to touch main() and init_logging() at all.
+
+- the entry point for all your high level code is run() (called by main() in an
+  exception clause to catch critical errors).
+
+EOF
