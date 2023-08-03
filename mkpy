@@ -30,8 +30,6 @@ fi
 
 pyprog="$1"
 
-[[ "$pyprog" == *.py ]] || pyprog="$pyprog.py"
-
 if [ -f "$pyprog" ]
 then
     abort "\"$pyprog\" already exist"
@@ -112,8 +110,14 @@ def init_logging(setup: dict[str, any]) -> None:
 
     """
     if setup['log_cfg'] == '':
-        log_level = logging.DEBUG if setup['debug'] else __log_level_default
-        logging.basicConfig(level=log_level, format='%(message)s')
+        if setup['debug']:
+            level = logging.DEBUG
+            format = '%(levelname)s - %(message)s'
+        else:
+            level = __log_level_default
+            format = '%(message)s'
+
+        logging.basicConfig(level=level, format=format)
     else:
         logging.config.fileConfig(setup['log_cfg'])
 
