@@ -13,8 +13,18 @@ readonly MKDIR=/usr/bin/mkdir
 
 if [ $# -lt 3 ]
 then
-    echo "usage: $PROGNAME DIR pattern DEST [find opts]" >&2
-    exit 2
+/bin/cat >&2 <<EOF
+
+fmove = find and move
+
+This is a replacment for the common task:
+
+find DIR -name pattern -exec mv '{}' DEST ';'
+
+usage: $PROGNAME DIR pattern DEST [find opts]
+
+EOF
+exit 2
 fi
 
 dir="$1"
