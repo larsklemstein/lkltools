@@ -3,7 +3,7 @@
 
 ## Motivation
 
-Just a couple of simple tools I find useful
+Just a couple of simple Linux tools I find useful from time to time.
 
 Immplementation languages are 
 
