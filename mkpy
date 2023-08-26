@@ -63,12 +63,10 @@ def main():
     logger = logging.getLogger(__name__)
 
     try:
-        run(setup)
+        sys.exit(run(setup))
     except Exception:
         logger.critical('Abort, rc=3', exc_info=True)
         sys.exit(3)
-
-    sys.exit(0)
 
 
 def get_prog_setup_or_exit_with_usage() -> dict[str, any]:
@@ -122,7 +120,7 @@ def init_logging(setup: dict[str, any]) -> None:
         logging.config.fileConfig(setup['log_cfg'])
 
 
-def run(setup: dict[str, any]) -> None:
+def run(setup: dict[str, any]) -> int:
     logger = logging.getLogger(__name__)
 
     #
@@ -130,6 +128,8 @@ def run(setup: dict[str, any]) -> None:
     # 
 
     logger.info(f'Done something...')
+    
+    return 0
 
 
 if __name__ == '__main__':
