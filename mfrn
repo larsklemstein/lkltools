@@ -26,12 +26,10 @@ def main():
     logger = logging.getLogger(__name__)
 
     try:
-        run(setup)
+        sys.exit(run(setup))
     except Exception:
         logger.critical('Abort, rc=3', exc_info=True)
         sys.exit(3)
-
-    sys.exit(0)
 
 
 def get_prog_setup_or_exit_with_usage() -> dict[str, any]:
@@ -96,7 +94,7 @@ def init_logging(setup: dict[str, any]) -> None:
         logging.config.fileConfig(setup['log_cfg'])
 
 
-def run(setup: dict[str, any]) -> None:
+def run(setup: dict[str, any]) -> int:
     logger = logging.getLogger(__name__)
 
     filename_triples = get_filename_triples_or_exit(setup)
@@ -107,6 +105,8 @@ def run(setup: dict[str, any]) -> None:
     moved = move_files(filename_triples)
 
     logger.info(f'Done (moved {moved} file(s)).')
+
+	return 0
 
 
 def get_filename_triples_or_exit(
