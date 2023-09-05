@@ -13,6 +13,11 @@
 readonly PROG=${0##*/}
 
 
+print_usage_and_exit() {
+    echo "Usage: $PROG [-e] [-l LOG_INI] PYPROG" >&2
+    exit 2
+}
+
 msg() {
     echo "$*" >&2
 }
@@ -22,11 +27,30 @@ abort() {
     exit 1
 }
 
-if [ $# -ne 1 ]
-then
-    echo "Usage: $PROG PYPROG" >&2
-    exit 2
-fi
+log_ini=
+edit=n
+
+while getopts el: opt
+do
+    echo "opt: ->$opt<-"
+
+    case $opt in
+        e)
+            edit=y 
+            ;;
+        l)
+           log_ini=$OPTARG
+           ;;
+        *)
+            print "Fump..."
+            print_usage_and_exit
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ $# -eq 1 ] || print_usage_and_exit
 
 pyprog="$1"
 
@@ -140,21 +164,17 @@ chmod +x $pyprog
 
 msg "Created $pyprog"
 
-/bin/cat >&2 << EOF
+if [ $edit = y ]
+then
+    editor=${EDITOR:-vi}
 
-Hints:
-
-- please adjust get_prog_setup_or_exit_with_usage() as this defines the
-  arguments (fixed and optional) your program expect.
-
-- default log log level when not using a logging cfg is defined in program
-  header in __log_level_default (=logging.INFO). So if you want to create a unix like
-  ("no message is a good message") style program, just set this to e.g. logging.WARNING.
-  Default basic logging output is just text (no log level, no date etc.).
-
-- normally you do not need to touch main() and init_logging() at all.
-
-- the entry point for all your high level code is run() (called by main() in an
-  exception clause to catch critical errors).
-
-EOF
+    if egrep -q "$editor" <<< '^(n?vi|n?vim)$'
+    then
+        p="logger\.info.*f'Done something"
+        typeset -i run_pos=$(grep -n "$p" $pyprog  | cut -d: -f1)
+        run_pos=run_pos-1
+        $editor +$run_pos $pyprog
+    else
+        $editor $pyprog
+    fi
+fi
