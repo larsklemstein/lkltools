@@ -10,12 +10,76 @@
 # bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
 
+
+# ----------------------------------------------------------------------------
+# constants
+# ----------------------------------------------------------------------------
+
 readonly PROG=${0##*/}
 
+SHORT_USAGE="$PROG [-h] [-e] [-f] [-v 3.6] [-d description] "
+SHORT_USAGE+="[-r role] [-l LOG_INI] PYPROG" 
+readonly SHORT_USAGE
 
-print_usage_and_exit() {
-    echo "Usage: $PROG [-e] [-l LOG_INI] PYPROG" >&2
+readonly ENTRY_COMMENT="
+    #
+    # this is the entry point for what your program actually does...
+    # 
+"
+
+# ----------------------------------------------------------------------------
+# defaults
+# ----------------------------------------------------------------------------
+#
+shebang='#!/usr/bin/env python3'
+dict_str_any='dict[str, any]'
+
+log_ini=
+edit=n
+force_mode=n
+old_version=n
+role=example
+version=3
+
+description='A progam which does something. What might it be?'
+
+setup_getter='setup = get_prog_setup_or_exit_with_usage()'
+setup_getter+=' # might exit with rc=${rc_usage}'
+
+rc_ok=0
+rc_usage=2
+rc_exception=3
+
+extra_imports=
+extra_funcs=
+
+
+# ----------------------------------------------------------------------------
+# functions
+# ----------------------------------------------------------------------------
+
+print_short_usage_and_exit() {
+    echo "Usage: $SHORT_USAGE" >&2
     exit 2
+}
+
+print_long_usage_and_exit() {
+/bin/cat >%2 << EOF
+mkpy = make python program
+
+A simple tool to create a new python program in a unique way.
+
+base usage:
+
+$BASE_USAGE
+
+options:
+
+
+
+EOF
+
+exit 2
 }
 
 msg() {
@@ -27,34 +91,94 @@ abort() {
     exit 1
 }
 
-log_ini=
-edit=n
+ap_fix_args_example() {
+/bin/cat << EOF
+    parser.add_argument(
+        'FIX_ARG_EXAMPLE', help='FIX_ARG is for, well: please say it',
+    )
+EOF
+}
 
-while getopts el: opt
+ap_fix_args_inout() {
+/bin/cat << EOF
+    parser.add_argument(
+        'infile', metavar='INFILE', type=str, help='input file',
+    )
+
+    parser.add_argument(
+        'outfile', metavar='OUTFILE', type=str, help='output file',
+    )
+EOF
+}
+
+default_run_func() {
+/bin/cat <<EOF
+def run(setup: ${dict_str_any}) -> int:
+    logger = logging.getLogger(__name__)
+${ENTRY_COMMENT}
+    logger.info(f'Done something...')
+    
+    return ${rc_ok}
+EOF
+}
+
+setup_getter_nagios() {
+/bin/cat <<EOF
+    try:
+        setup = get_prog_setup_or_exit_with_usage()
+    except:
+        sys.exit(2)
+EOF
+}
+
+# ----------------------------------------------------------------------------
+# main
+# ----------------------------------------------------------------------------
+
+
+run_func="$(default_run_func)"
+
+while getopts efnv:d:r:l:h opt
 do
-    echo "opt: ->$opt<-"
-
     case $opt in
         e)
-            edit=y 
-            ;;
+            edit=y ;;
+        f) 
+            force_mode=y ;;
+        v)
+            version=$OPTARG ;;
+        d)
+            description=$OPTARG ;;
+        r)
+            role=$OPTARG ;;
         l)
-           log_ini=$OPTARG
-           ;;
+           log_ini=$OPTARG ;;
+        h)
+            print_long_usage_and_exit ;;
         *)
-            print "Fump..."
-            print_usage_and_exit
-            ;;
+            print_short_usage_and_exit ;;
     esac
 done
 
+case $role in
+    example)
+        fix_args=$(ap_fix_args_example) ;;
+    inout|in_out)
+        fix_args=$(ap_fix_args_inout) ;;
+    nagios|nagios?plugin)
+        fix_args=$(ap_fix_args_inout) ;;
+    *)
+        msg "unknown role \"$role\" specified"
+        exit 2
+esac
+
 shift $((OPTIND-1))
 
-[ $# -eq 1 ] || print_usage_and_exit
+[ $# -eq 1 ] || print_short_usage_and_exit
 
 pyprog="$1"
 
-if [ -f "$pyprog" ]
+if [ -f "$pyprog" -a "$force_mode" = n ]
 then
     abort "\"$pyprog\" already exist"
 fi
@@ -62,53 +186,58 @@ fi
 email=$(git config --global user.email 2>/dev/null) || true
 [ -n "$email" ] || email="<unknown>"
 
-/bin/cat >$pyprog <<EOF
-#!/usr/bin/env python3
 
-# ****************************************************************************
-# DESCRIPTION
-#   Does this and that. And much mure.
+dict_import=""
+
+
+if [ $version = '3.6' ]
+then
+    dict_str_any='Dict[str, any]'
+    dict_import="from typing import Dict\n"
+    shebang='/usr/bin/env python3.6'
+fi
+
+/bin/cat >$pyprog <<EOF
+${shebang}
+
+"""
+${description}
+"""
 
 # bugs and hints: ${email}
-# ****************************************************************************
 
 import argparse
 import logging
 import sys
+${extra_imports}
 
-
+${dict_import}
 __log_level_default = logging.INFO
 
 
 def main():
-    setup = get_prog_setup_or_exit_with_usage()  # might exit with rc=2
-    init_logging(setup)
+    ${setup_getter}
 
+    init_logging(setup)
     logger = logging.getLogger(__name__)
 
     try:
         sys.exit(run(setup))
     except Exception:
-        logger.critical('Abort, rc=3', exc_info=True)
-        sys.exit(3)
+        logger.critical("Abort, rc=${rc_exception}", exc_info=True)
+        sys.exit(${rc_exception})
 
 
-def get_prog_setup_or_exit_with_usage() -> dict[str, any]:
-    parser = argparse.ArgumentParser(
-        description=(
-            'Some words about what your program actually does'
-        )
-    )
+def get_prog_setup_or_exit_with_usage() -> ${dict_str_any}:
+    parser = argparse.ArgumentParser(description=get_prog_doc())
 
     log_group = parser.add_mutually_exclusive_group()
 
-    parser.add_argument(
-        'FIX_ARG_EXAMPLE', help='FIX_ARG is for, well: please say it',
-    )
+${fix_args}
 
-    parser.add_argument(
-        '--optional_arg', help='an example for an optional arg',
-    )
+    # parser.add_argument(
+    #    '--optional_arg', help='an example for an optional arg',
+    #)
 
     log_group.add_argument(
         '--debug', action='store_true',
@@ -126,7 +255,11 @@ def get_prog_setup_or_exit_with_usage() -> dict[str, any]:
     return args
 
 
-def init_logging(setup: dict[str, any]) -> None:
+def get_prog_doc() -> str:
+    return sys.modules['__main__'].__doc__.strip().replace('\n', ' ').strip()
+
+
+def init_logging(setup: $dict_str_any) -> None:
     """Creates either a logger by cfg file or a default instance
     with given log level by arg --log_level (otherwise irgnored)
 
@@ -144,18 +277,9 @@ def init_logging(setup: dict[str, any]) -> None:
         logging.config.fileConfig(setup['log_cfg'])
 
 
-def run(setup: dict[str, any]) -> int:
-    logger = logging.getLogger(__name__)
+${run_func}
 
-    #
-    # this is the entry point for what your program actually does...
-    # 
-
-    logger.info(f'Done something...')
-    
-    return 0
-
-
+${extra_funcs}
 if __name__ == '__main__':
     main()
 EOF
