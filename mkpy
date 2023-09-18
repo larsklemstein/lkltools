@@ -64,7 +64,7 @@ print_short_usage_and_exit() {
 }
 
 print_long_usage_and_exit() {
-/bin/cat >%2 << EOF
+/bin/cat >&2 << EOF
 mkpy = make python program
 
 A simple tool to create a new python program in a unique way.
