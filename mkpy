@@ -71,7 +71,7 @@ A simple tool to create a new python program in a unique way.
 
 base usage:
 
-$BASE_USAGE
+$SHORT_USAGE
 
 options:
 
