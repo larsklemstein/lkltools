@@ -51,9 +51,6 @@ rc_ok=0
 rc_usage=2
 rc_exception=3
 
-extra_imports=
-extra_funcs=
-
 
 # ----------------------------------------------------------------------------
 # functions
@@ -195,7 +192,11 @@ type_import=""
 if [ $version = '3.6' ]
 then
     dict_str_any='Dict[str, Any]'
-    type_import='from typing import Any, Dict  # , List, Tuple, Callable'
+
+    type_import='
+from typing import Any, Dict  # , List, Tuple, Callable
+'
+
     shebang='#!/usr/bin/env python3.6'
 fi
 
@@ -214,7 +215,6 @@ import argparse
 import logging
 import logging.config
 import sys
-${extra_imports}
 ${type_import}
 __log_level_default = logging.INFO
 
@@ -288,7 +288,7 @@ def init_logging(setup: $dict_str_any) -> None:
 
 ${run_func}
 
-${extra_funcs}
+
 if __name__ == '__main__':
     main()
 EOF
