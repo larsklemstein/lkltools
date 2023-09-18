@@ -45,7 +45,7 @@ def get_prog_setup_or_exit_with_usage() -> dict[str, any]:
 
     log_group = parser.add_mutually_exclusive_group()
 
-    parser.add_argument('template')
+    parser.add_argument('template', help='string containing %%d for numbering')
 
     parser.add_argument(
         '-D', '--dir', default='.',
@@ -97,7 +97,12 @@ def init_logging(setup: dict[str, any]) -> None:
 def run(setup: dict[str, any]) -> int:
     logger = logging.getLogger(__name__)
 
-    filename_triples = get_filename_triples_or_exit(setup)
+    filename_triples = get_filename_triples(setup)
+
+    if len(filename_triples) == 0:
+        mh = 'matching' if glob == '*' else ''
+        logger.info(f'No {mh}files found, rc=0')
+        return 0
 
     logger.debug('Files returned by get_file_list_or_exit():',
                  len(filename_triples))
@@ -106,16 +111,16 @@ def run(setup: dict[str, any]) -> int:
 
     logger.info(f'Done (moved {moved} file(s)).')
 
-	return 0
+    return 0
 
 
-def get_filename_triples_or_exit(
-        setup: dict[str, any]) -> list[[str, str, str],]:
+def get_filename_triples( setup: dict[str, any]) -> list[[str, str, str],]:
     """For each file name create triple of org+tmp+dest name
     """
     file_list = get_matching_file_names(setup)
 
-    exit_on_empty_file_list(file_list, setup['glob'])
+    if len(file_list) == 0:
+        return file_list
 
     numwidth = int(math.log(len(file_list), 10)) + 1
 
@@ -146,24 +151,19 @@ def get_matching_file_names(setup: dict[str, any]) -> list[str, str]:
     return file_list
 
 
-def exit_on_empty_file_list(
-            file_list: list[str, str, str], glob: str):
-    logger = logging.getLogger(__name__)
-
-    if len(file_list) == 0:
-        mh = 'matching' if glob == '*' else ''
-        logger.info(f'No {mh}files found, rc=0')
-        sys.exit(0)
-
-
 def move_files(filename_triples: list[[str, str, str],]) -> int:
     """we move to a temporily name before moving to dest, because
     so we get rid off problems due conflicting existing file names,
     .e.g. due conflicts after incomplete further runs etc.
     At least I hope so...
     """
-    logger = logging.getLogger(__name__)
+    move_files_temp(filename_triples)
+    n_moved = move_files_perm(filename_triples)
 
+    return n_moved
+
+
+def move_files_temp(filename_triples: list[[str, str, str],]) -> None:
     for n, file_names in enumerate(filename_triples, start=1):
         file_real, file_tmp_active, file_dest = file_names[:]
 
@@ -172,7 +172,11 @@ def move_files(filename_triples: list[[str, str, str],]) -> int:
         if file_real != file_dest:
             shutil.move(file_real, file_tmp_active)
 
-    moved = 0
+
+def move_files_perm(filename_triples: list[[str, str, str],]) -> int:
+    logger = logging.getLogger(__name__)
+    n_moved = 0
+
     for n, file_names in enumerate(filename_triples, start=1):
         file_real, file_tmp_active, file_dest = file_names[:]
 
@@ -181,9 +185,9 @@ def move_files(filename_triples: list[[str, str, str],]) -> int:
         else:
             logger.info(f'  [{n}] {file_real} -> {file_dest}')
             shutil.move(file_tmp_active, file_dest)
-            moved += 1
+            n_moved += 1
 
-    return moved
+    return n_moved
 
 
 if __name__ == '__main__':
