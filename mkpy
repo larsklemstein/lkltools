@@ -24,7 +24,7 @@ readonly SHORT_USAGE
 readonly ENTRY_COMMENT="
     #
     # this is the entry point for what your program actually does...
-    # 
+    #
 "
 
 # ----------------------------------------------------------------------------
@@ -32,7 +32,9 @@ readonly ENTRY_COMMENT="
 # ----------------------------------------------------------------------------
 #
 shebang='#!/usr/bin/env python3'
-dict_str_any='dict[str, any]'
+
+default_dict_str_any='dict[str, any]'
+dict_str_any=$default_dict_str_any
 
 log_ini=
 edit=n
@@ -44,7 +46,6 @@ version=3
 description='A progam which does something. What might it be?'
 
 setup_getter='setup = get_prog_setup_or_exit_with_usage()'
-setup_getter+=' # might exit with rc=${rc_usage}'
 
 rc_ok=0
 rc_usage=2
@@ -111,13 +112,15 @@ ap_fix_args_inout() {
 EOF
 }
 
-default_run_func() {
+get_run_func() {
+    dict_str_any=${1:-$default_dict_str_any}
+
 /bin/cat <<EOF
 def run(setup: ${dict_str_any}) -> int:
     logger = logging.getLogger(__name__)
 ${ENTRY_COMMENT}
-    logger.info(f'Done something...')
-    
+    logger.info('Done something...')
+
     return ${rc_ok}
 EOF
 }
@@ -136,7 +139,6 @@ EOF
 # ----------------------------------------------------------------------------
 
 
-run_func="$(default_run_func)"
 
 while getopts efnv:d:r:l:h opt
 do
@@ -187,15 +189,17 @@ email=$(git config --global user.email 2>/dev/null) || true
 [ -n "$email" ] || email="<unknown>"
 
 
-dict_import=""
+type_import=""
 
 
 if [ $version = '3.6' ]
 then
-    dict_str_any='Dict[str, any]'
-    dict_import="from typing import Dict\n"
-    shebang='/usr/bin/env python3.6'
+    dict_str_any='Dict[str, Any]'
+    type_import='from typing import Any, Dict  # , List, Tuple, Callable'
+    shebang='#!/usr/bin/env python3.6'
 fi
+
+run_func=$(get_run_func "$dict_str_any")
 
 /bin/cat >$pyprog <<EOF
 ${shebang}
@@ -208,10 +212,10 @@ ${description}
 
 import argparse
 import logging
+import logging.config
 import sys
 ${extra_imports}
-
-${dict_import}
+${type_import}
 __log_level_default = logging.INFO
 
 
@@ -235,9 +239,9 @@ def get_prog_setup_or_exit_with_usage() -> ${dict_str_any}:
 
 ${fix_args}
 
-    # parser.add_argument(
-    #    '--optional_arg', help='an example for an optional arg',
-    #)
+#   parser.add_argument(
+#        '--optional_arg', help='an example for an optional arg',
+#   )
 
     log_group.add_argument(
         '--debug', action='store_true',
@@ -256,7 +260,12 @@ ${fix_args}
 
 
 def get_prog_doc() -> str:
-    return sys.modules['__main__'].__doc__.strip().replace('\n', ' ').strip()
+    doc_str = sys.modules['__main__'].__doc__
+
+    if doc_str is not None:
+        return doc_str.strip().replace('\n', ' ').strip()
+    else:
+        return '<???>'
 
 
 def init_logging(setup: $dict_str_any) -> None:
@@ -294,7 +303,7 @@ then
 
     if egrep -q "$editor" <<< '^(n?vi|n?vim)$'
     then
-        p="logger\.info.*f'Done something"
+        p="logger\.info.*'Done something"
         typeset -i run_pos=$(grep -n "$p" $pyprog  | cut -d: -f1)
         run_pos=run_pos-1
         $editor +$run_pos $pyprog
