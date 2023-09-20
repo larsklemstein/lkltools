@@ -17,7 +17,7 @@
 
 readonly PROG=${0##*/}
 
-SHORT_USAGE="$PROG [-h] [-e] [-f] [-v 3.6] [-d description] "
+SHORT_USAGE="$PROG [-h] [-e] [-f] [-d description] "
 SHORT_USAGE+="[-r role] [-l LOG_INI] PYPROG" 
 readonly SHORT_USAGE
 
@@ -33,17 +33,17 @@ readonly ENTRY_COMMENT="
 #
 shebang='#!/usr/bin/env python3'
 
-default_dict_str_any='dict[str, any]'
-dict_str_any=$default_dict_str_any
+dict_str_any='Dict[str, Any]'
 
 log_ini=
 edit=n
 force_mode=n
 old_version=n
 role=example
-version=3
 
-description='A progam which does something. What might it be?'
+description="WHat's the blue light for?
+
+It light's blue..."
 
 setup_getter='setup = get_prog_setup_or_exit_with_usage()'
 
@@ -144,8 +144,6 @@ do
             edit=y ;;
         f) 
             force_mode=y ;;
-        v)
-            version=$OPTARG ;;
         d)
             description=$OPTARG ;;
         r)
@@ -186,20 +184,6 @@ email=$(git config --global user.email 2>/dev/null) || true
 [ -n "$email" ] || email="<unknown>"
 
 
-type_import=""
-
-
-if [ $version = '3.6' ]
-then
-    dict_str_any='Dict[str, Any]'
-
-    type_import='
-from typing import Any, Dict  # , List, Tuple, Callable
-'
-
-    shebang='#!/usr/bin/env python3.6'
-fi
-
 run_func=$(get_run_func "$dict_str_any")
 
 /bin/cat >$pyprog <<EOF
@@ -215,7 +199,9 @@ import argparse
 import logging
 import logging.config
 import sys
-${type_import}
+
+from typing import Any, Dict  # , List, Tuple, Callable
+
 __log_level_default = logging.INFO
 
 
@@ -233,7 +219,10 @@ def main():
 
 
 def get_prog_setup_or_exit_with_usage() -> ${dict_str_any}:
-    parser = argparse.ArgumentParser(description=get_prog_doc())
+    parser = argparse.ArgumentParser(
+                description=get_prog_doc(),
+                formatter_class=argparse.RawTextHelpFormatter,
+            )
 
     log_group = parser.add_mutually_exclusive_group()
 
@@ -263,7 +252,7 @@ def get_prog_doc() -> str:
     doc_str = sys.modules['__main__'].__doc__
 
     if doc_str is not None:
-        return doc_str.strip().replace('\n', ' ').strip()
+        return doc_str.strip()
     else:
         return '<???>'
 
