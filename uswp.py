@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+
+# uswp == unswap vi|vim|nvim file
+
+# bugs and hints: lrsklemstein@gmail.com
+
+
+import os.path
+import pathlib
+import sys
+
+
+def main():
+    if len(sys.argv) != 2:
+        print_usage_and_exit()
+
+    file = os.path.abspath(sys.argv[1])
+
+    if not os.path.isfile(file):
+        abort(f'file "{file}" not found')
+
+    deletion_funcs = (
+        delete_vi_swap_file_for,
+        delete_nvim_swap_file_for,
+    )
+
+    for df in deletion_funcs:
+        if df(file):
+            msg('deleted swap file for {file}')
+            sys.exit(0)
+    else:  
+        msg('!!! unable to delete swap file for {file}')
+        sys.exit(1)
+
+
+def print_usage_and_exit(rc=2):
+    progname = os.path.basename(sys.argv[0])
+    print(f'usage: {progname} FILE', file=sys.stderr)
+    sys.exit(rc)
+
+
+def msg(s: str):
+    print(s, file=sys.stderr)
+
+
+def abort(s: str, rc=1):
+    msg(s)
+    sys.exit(rc)
+
+
+def delete_vi_swap_file_for(file: str) -> bool:
+    file_dir = os.path.dirname(file)
+    file_basename = os.path.basename(file)
+
+    swap_file_name = os.path.join(file_dir, '.' + file_basename + '.swp')
+
+    return file_deleted_successfully(swap_file_name)
+
+
+def delete_nvim_swap_file_for(file: str) -> bool:
+    home = str(pathlib.Path.home())
+    swap_file_dir = os.path.join(home, '.local', 'state', 'nvim', 'swap')
+
+    if not os.path.isdir(swap_file_dir):
+        msg(f'Expected nvim swap file dir {swap_file_dir} not found!')
+        return
+
+    swap_file_basename = file.replace('/', '%')
+
+    swap_file_name = os.path.join(swap_file_dir, swap_file_basename) + '.swp'
+
+    return file_deleted_successfully(swap_file_name)
+
+
+def file_deleted_successfully(file_name: str) -> bool:
+    if os.path.isfile(file_name):
+        os.unlink(file_name)
+        return True
+    else:
+        return False
+
+
+if __name__ == '__main__':
+    main()
