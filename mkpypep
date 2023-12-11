@@ -1,6 +1,12 @@
 #!/bin/bash -eu
 
-# mkpep = make pipenv project (with pyenv in mind)
+# mkpypep == make python (optionally dockerized) pipenv project
+
+# Todos:
+#  - use getopt
+#  - imlpement docker switch
+#  - implement log.ini switch
+#  - implement wrapper script switch
 
 # bugs and hints: lrsklemstein@gmail.com
 
@@ -18,7 +24,7 @@ abort() {
 }
 
 main() {
-    [ $# -eq 1 -o $# -eq 2 ] || print_usage_and_exit
+    [ $# -eq 1 -o $# -eq 2 ] || print_long_usage_and_exit
 
     project_dir="$1"
     py_version="${2:-}"
@@ -41,10 +47,36 @@ main() {
     exit 0
 }
 
-print_usage_and_exit() {
-    progname=${0##*/}
-    msg "usage: $progname PROJECT_DIR [python_version]"
+print_short_usage_and_exit() {
+    basic_usage=$(get_basic_usage)
+    msg "usage: $basic_usage"
     exit 2
+}
+
+print_long_usage_and_exit() {
+basic_usage=$(get_basic_usage)
+
+/bin/cat <<EOF
+mkpypep == make python (optionally dockerized) pipenv project
+
+usage:
+  $basic_usage
+
+options:
+ -h                : this usage
+ -p python_version : specify python version to be used (e.g. "-p 3.11")
+ -d                : create Dockerfile
+ -L                : create log.ini file
+ -W                : create wrapper script (with pipenv or docker run call)
+ -a                : combination of -d -L -W
+
+EOF
+exit 2
+}
+
+get_basic_usage() {
+    progname=${0##*/}
+    echo "$progname [-h] [-p python_version] [-d] [-L] [-W] PROJECT_DIR"
 }
 
 get_major_py_version() {
