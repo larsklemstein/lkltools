@@ -1,0 +1,37 @@
+#!/bin/bash -eu
+
+# super stupd "create a dummy execise/experimanteal" python program,
+# meant for beeing deleted right away.
+
+# PLEASE DO NOT USE this for anthing else (there's mkpy for...')
+
+# bugs and hints: lrsklemstein@gmail.com
+
+
+readonly PROG=${0##*/}
+
+if [ $# -ne 1 ]
+then
+    echo "$PROG pyprog" >&2
+    exit 2
+fi
+
+pyprog="$1"
+
+cat > $pyprog <<EOF
+#!/usr/bin/env python3
+
+import sys
+
+
+def main():
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
+EOF
+
+chmod +x $pyprog
+
+${VISUAL:-vi} $pyprog
