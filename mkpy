@@ -17,8 +17,10 @@
 
 readonly PROG=${0##*/}
 
-SHORT_USAGE="$PROG [-h] [-e] [-f] [-d description] "
-SHORT_USAGE+="[-r role] [-l LOG_INI] PYPROG" 
+readonly VERSION=1.3
+
+SHORT_USAGE="$PROG [-h] [-v] [-e] [-f] [-d description] "
+SHORT_USAGE+="[-r role] [-L] PYPROG" 
 readonly SHORT_USAGE
 
 readonly ENTRY_COMMENT="
@@ -35,10 +37,9 @@ shebang='#!/usr/bin/env python3'
 
 dict_str_any='Dict[str, Any]'
 
-log_ini=
+log_ini=n
 edit=n
 force_mode=n
-old_version=n
 role=example
 
 description="WHat's the blue light for?
@@ -61,11 +62,26 @@ print_short_usage_and_exit() {
     exit 2
 }
 
+print_version_and_exit() {
+    echo "This is $PROG version $VERSION" >&2
+    exit 2
+}
+
 print_long_usage_and_exit() {
 /bin/cat >&2 << EOF
 mkpy = make python program
 
-A simple tool to create a new python program in a unique way.
+A simple tool to create a new python3 program in a unique way.
+Functions are used with type hints. The two python functions you should
+start with are:
+
+- get_prog_setup_or_exit_with_usage():
+    Here you define your program usage and the description using the
+    argparse module.
+
+- run():
+    This is the actual entry point for your application specific code
+    (not main, which is just used as an exception safe start point)
 
 base usage:
 
@@ -73,8 +89,31 @@ $SHORT_USAGE
 
 options:
 
+    -h:
+        show this help
 
+    -v:
+        show $PROG version
 
+    -e:
+        edit file after creation with standard editor
+
+    -f: 
+        force mode (overwrite files)
+
+    -d:
+        set program description (for usage)
+
+    -r ROLE:
+        set program role, currently implemented:
+            - example : default
+            - inout   : expect an input, write an output file
+            - nagios  : create Nagios style check script
+
+    -L:
+        create logging ini file
+
+bugs and hints: lrsklemstein@gmail.com
 EOF
 
 exit 2
@@ -135,11 +174,13 @@ EOF
 # main
 # ----------------------------------------------------------------------------
 
-
-
-while getopts efnv:d:r:l:h opt
+while getopts efnvd:r:Lh opt
 do
     case $opt in
+        h)
+            print_long_usage_and_exit ;;
+        v)
+            print_version_and_exit ;;
         e)
             edit=y ;;
         f) 
@@ -148,10 +189,8 @@ do
             description=$OPTARG ;;
         r)
             role=$OPTARG ;;
-        l)
-           log_ini=$OPTARG ;;
-        h)
-            print_long_usage_and_exit ;;
+        L)
+           log_ini=y ;;
         *)
             print_short_usage_and_exit ;;
     esac
@@ -162,10 +201,10 @@ case $role in
         fix_args=$(ap_fix_args_example) ;;
     inout|in_out)
         fix_args=$(ap_fix_args_inout) ;;
-    nagios|nagios?plugin)
+    nagios*|icinga*)
         fix_args=$(ap_fix_args_inout) ;;
     *)
-        msg "unknown role \"$role\" specified"
+        msg "specified role \"$role\" not implemented"
         exit 2
 esac
 
@@ -174,6 +213,7 @@ shift $((OPTIND-1))
 [ $# -eq 1 ] || print_short_usage_and_exit
 
 pyprog="$1"
+pyprog_basename=${pyprog#*.py}
 
 if [ -f "$pyprog" -a "$force_mode" = n ]
 then
@@ -285,6 +325,52 @@ EOF
 chmod +x $pyprog
 
 msg "Created $pyprog"
+
+if [ "$log_ini" = y ]
+then
+
+log_ini_file="${pyprog_basename}_log.ini"
+log_output_file="/var/log/${pyprog_basename}.log"
+
+sed "s!%log_output_file%!$log_output_file!g" >$log_ini_file <<EOF
+[loggers]
+keys=root
+
+[handlers]
+keys=consoleHandler,fileHandler
+
+[formatters]
+keys=consoleFormatter,logfileFormatter
+
+[logger_root]
+level=DEBUG
+handlers=fileHandler,consoleHandler
+
+[handler_consoleHandler]
+class=StreamHandler
+level=INFO
+formatter=consoleFormatter
+args=(sys.stderr,)
+
+[handler_fileHandler]
+class=handlers.TimedRotatingFileHandler
+level=DEBUG
+formatter=logfileFormatter
+args=('%log_output_file%','midnight',1,30)
+
+[formatter_consoleFormatter]
+format=%(levelname)s - %(message)s
+datefmt=
+
+[formatter_logfileFormatter]
+format=%(asctime)s - %(levelname)s - line %(lineno)s in %(funcName)s(), PID %(process)s - %(message)s
+datefmt=
+EOF
+
+msg "Created $log_ini_file"
+msg "(currently creating log files as $log_output_file, please adjust!)"
+
+fi
 
 if [ $edit = y ]
 then
