@@ -12,8 +12,15 @@ readonly PROG=${0##*/}
 
 if [ $# -ne 1 ]
 then
-    echo "$PROG {pyprog|.}" >&2
-    exit 2
+/bin/cat >&2 <<EOF
+
+Create a throw away python program. Not meant for production use!
+Will create a minimal python program and edit it right away.
+
+usage: $PROG {pyprog|.}
+
+EOF
+exit 2
 fi
 
 pyprog="$1"
