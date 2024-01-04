@@ -1,9 +1,9 @@
 #!/bin/bash -eu
 
-# super stupd "create a dummy execise/experimanteal" python program,
-# meant for beeing deleted right away.
+# super stupid "create a dummy execise/experimanteal" python program,
+# meant for beeing edited, executed and beeing deleted after short time.
 
-# PLEASE DO NOT USE this for anthing else (there's mkpy for...')
+# PLEASE DO NOT USE this for anything else (there's mkpy for...')
 
 # bugs and hints: lrsklemstein@gmail.com
 
@@ -12,19 +12,31 @@ readonly PROG=${0##*/}
 
 if [ $# -ne 1 ]
 then
-    echo "$PROG pyprog" >&2
+    echo "$PROG {pyprog|.}" >&2
     exit 2
 fi
 
 pyprog="$1"
 
+if [ "$pyprog" = "." ]
+then
+    if [[ $PWD = $HOME || $PWD != *$HOME/* ]]
+    then
+        echo "Can not auto-create python program here!" >&2
+        exit 1
+    fi
+    pyprog=${PWD##*/}
+fi
+
 cat > $pyprog <<EOF
 #!/usr/bin/env python3
+
+# Some throw away code
 
 import sys
 
 
-def main():
+def main() -> None:
     sys.exit(0)
 
 
@@ -34,4 +46,16 @@ EOF
 
 chmod +x $pyprog
 
-${VISUAL:-vi} $pyprog
+entry_line_num=8
+
+if [ -n "$EDITOR" ]
+then
+    if  [[ "$EDITOR" == vi? || $EDITOR == nvi? ]]
+    then
+        ${EDITOR} +$entry_line_num $pyprog
+    else
+        ${EDITOR} $pyprog
+    fi
+else
+    vi +$entry_line_num $pyprog
+fi
