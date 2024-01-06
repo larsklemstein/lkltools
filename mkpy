@@ -98,7 +98,7 @@ options:
         edit file after creation with standard editor
 
     -f: 
-        force mode (overwrite files)
+        force mode (overwrite files and directories if required)
 
     -d:
         set program description (for usage)
