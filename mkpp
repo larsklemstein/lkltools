@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+
+"""
+mkpp == make python class property functions
+        - -  -            -
+
+Auto create property methods (and optionally setters) for variables
+of an internal python class.
+"""
+
+# bugs and hints: lrsklemstein@gmail.com
+
+import argparse
+import logging
+import logging.config
+import re
+import sys
+
+from typing import Any, Dict  # , List, Tuple, Callable
+
+__log_level_default = logging.INFO
+
+
+def main() -> None:
+    setup = get_prog_setup_or_exit_with_usage()
+
+    init_logging(setup)
+    logger = logging.getLogger(__name__)
+
+    try:
+        sys.exit(run(setup))
+    except Exception:
+        logger.critical("Abort, rc=3", exc_info=True)
+        sys.exit(3)
+
+
+def get_prog_setup_or_exit_with_usage() -> Dict[str, Any]:
+    parser = argparse.ArgumentParser(
+                description=get_prog_doc(),
+                formatter_class=argparse.RawTextHelpFormatter,
+            )
+
+    log_group = parser.add_mutually_exclusive_group()
+
+    parser.add_argument(
+        'INFILE', help='specify the input python file',
+    )
+
+    parser.add_argument(
+        'OUTFILE', help='specify the (modified) output python file',
+    )
+
+    parser.add_argument(
+        'insert_at', type=int, help='line number to insert the new code',
+    )
+
+    parser.add_argument(
+        '--range', default=':',
+        help=(
+            'specify which lines to parse, syntax: [line_from]:[line_to] '
+            '(default: all)'
+        ),
+    )
+
+    parser.add_argument(
+        '--with_setters', action='store_true',
+        help='create setters too',
+    )
+    parser.add_argument(
+        '--pattern',
+        help=(
+            'specify regex, which lines (within the range) '
+            'should be taken (default: all)'
+        )
+    )
+
+    log_group.add_argument(
+        '--debug', action='store_true',
+        help='enable debug log level',
+    )
+
+    log_group.add_argument(
+        '--log_cfg', dest='log_cfg',
+        help='optional logging cfg in ini format',
+    )
+
+    args = vars(parser.parse_args())
+    args = {k: '' if v is None else v for k, v in args.items()}
+
+    return args
+
+
+def get_prog_doc() -> str:
+    doc_str = sys.modules['__main__'].__doc__
+
+    if doc_str is not None:
+        return doc_str.strip()
+    else:
+        return '<???>'
+
+
+def init_logging(setup: Dict[str, Any]) -> None:
+    """Creates either a logger by cfg file or a default instance
+    with given log level by arg --log_level (otherwise irgnored)
+
+    """
+    if setup['log_cfg'] == '':
+        if setup['debug']:
+            level = logging.DEBUG
+            format = '%(levelname)s - %(message)s'
+        else:
+            level = __log_level_default
+            format = '%(message)s'
+
+        logging.basicConfig(level=level, format=format)
+    else:
+        logging.config.fileConfig(setup['log_cfg'])
+
+
+def run(setup: Dict[str, Any]) -> int:
+    logger = logging.getLogger(__name__)
+
+    with open(setup['INFILE']) as f_in:
+        lines = [l.rstrip() for l in f_in.readlines()]
+
+    new_code = get_new_code(setup, lines)
+
+    with open(setup['OUTFILE'], 'wt') as f_out:
+        for line_num, line in enumerate(lines, start=1):
+            if line_num == setup['insert_at']:
+                print(new_code, file=f_out)
+                print('Tada!')
+
+            print(line, file=f_out)
+
+    return 0
+
+
+def get_new_code(setup, lines):
+    rf, rt = setup['range'].split(':')
+    rf = 1 if rf == '' else int(rf)
+    rt = len(lines) if rt == '' else int(rt)
+
+    pattern_priv_var = re.compile(r'\s+self.__(?P<k>\S+)\s=\s*(?P<v>\S+)')
+
+    new_code = ''
+    for n, line in enumerate(lines, start=1):
+        if rf <= n <= rt:
+            self_match = pattern_priv_var.match(line)
+            if self_match:
+                k = self_match.group('k')
+
+                new_code += make_property_for(k)
+
+                if setup['with_setters']:
+                    new_code += make_setter_for(k)
+
+    return new_code
+
+
+def make_property_for(value):
+    return (
+        f'    @property\n'
+        f'    def {value}(self):\n'
+        f'        return self.__{value}\n\n'
+    )
+
+
+def make_setter_for(value):
+    return (
+        f'    @{value}.setter\n'
+        f'    def {value}(self, value):\n'
+        f'        self.__{value} = value\n\n'
+    )
+
+if __name__ == '__main__':
+    main()
