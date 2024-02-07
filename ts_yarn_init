@@ -45,7 +45,7 @@ test -d "$project_dir" && abort "dir \"$project_dir\" already exist."
 
 mkdir -p "$project_dir"
 
-cd "$cd_project_dir"
+cd "$project_dir"
 
 
 msg 'init...'
@@ -60,3 +60,26 @@ yarn add -D ts-node
 msg 'Create tsconfig.json, required for tsc and ts-node...'
 yarn tsc --init --rootDir src --outDir ./bin --esModuleInterop \
          --lib ES2019 --module commonjs --noImplicitAny true
+
+
+/bin/cat > README.md << EOF
+# Description
+
+...
+
+# Hints
+
+...
+EOF
+/bin/cat > .gitignore << EOF
+node_modules
+EOF
+
+
+git init
+
+git add .
+
+git commit -m "initial checkin"
+
+msg "Initialized git"
