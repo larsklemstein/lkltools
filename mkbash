@@ -1,0 +1,168 @@
+#!/bin/bash -eu
+
+# simple initial bash script creator 
+
+# bugs and hints: lrsklemstein@gmail.com
+
+
+# ---- constants
+
+readonly PROG=${0##*/}
+
+
+# ---- functions
+
+msg() {
+    echo "[$PROG] $%" >&2
+}
+
+abort() {
+    msg "$*"
+    exit 1
+}
+
+
+# ---- main
+
+if [ $# -ne 1 ]
+then
+    echo "usage: $PROG SCRIPT_NAME" >&2
+    exit 2
+fi
+
+script_name="$1"
+
+script_name_base=${script_name##*/}
+
+email=$(git config --global user.email 2>/dev/null) || true
+[ -n "$email" ] || email="<unknown>"
+
+
+[ -f "$script_name" ] && \
+    abort "script file \"script_name\" already exists"
+
+/bin/cat >$script_name << EOF
+#!/bin/bash -eu
+
+# ****************************************************************************
+# DESCRIPTION
+#    Does this and that.
+#
+#    And much more, even using description with several lines.
+#
+# BASE USAGE
+# ${script_name_base} [-h][-v] FIX_ARG1
+#
+# OPTIONS
+# -h       : show more comprehensive help
+# -v       : show ${script_name_base} version
+# ****************************************************************************
+
+# hint: To auto-generate usage texts, please do not insert blank line(s)
+# after DESCRIPTION, BASE USAGE and OPTIONS headers.
+
+# bugs and hints: $email
+
+
+# ----------------------------------------------------------------------------
+# constants
+# ----------------------------------------------------------------------------
+
+readonly PROG=\${0##*/}
+readonly MY_VERSION=0.1.0
+
+
+# ----------------------------------------------------------------------------
+# functions
+# ----------------------------------------------------------------------------
+
+print_usage_and_exit() {
+    show_description
+    exit 2
+}
+
+msg() {
+    echo "[$PROG] \$*" >&2
+}
+
+abort() {
+    msg "\$*"
+    exit 1
+}
+
+print_version_and_exit() {
+    echo "This is \$PROG version \$MY_VERSION"
+    exit 0
+}
+
+show_description() {
+    sed -n '/^#\ *DESCRIPTION/, /^# *BASE USAGE/ p' "\$0" \\
+    | egrep -v '^# *(DESCRIPTION|BASE USAGE)' | sed 's/^# *//'
+}
+
+show_base_usage() {
+    grep -A1 "^# BASE USAGE" "\$0" | tail -1 | sed 's/^# *//'
+}
+
+show_options() {
+    sed -n '/^# *OPTIONS/, /^# *\*\*\*/p' "\$0" \\
+    | egrep -v '^# (OPTIONS|\*)' | sed 's/^# *//'
+}
+
+print_short_usage_and_exit() {
+    usage=\$(show_base_usage)
+    echo "usage: \$usage" >&2
+    exit 2
+}
+
+print_long_usage_and_exit() {
+description=\$(show_description)
+base_usage=\$(show_base_usage)
+options=\$(show_options)
+
+cat << _eof_
+# Description
+
+\$description
+
+
+# Base usage
+
+\$base_usage
+
+
+# Options
+
+\$options
+_eof_
+exit 0
+}
+
+
+# ----------------------------------------------------------------------------
+# main
+# ----------------------------------------------------------------------------
+
+while getopts hv opt
+do
+    case \$opt in
+        h)
+            print_long_usage_and_exit
+            ;;
+        v) print_version_and_exit
+            ;;
+        *) print_short_usage_and_exit
+            ;;
+    esac
+done
+
+if [ \$# -ne 1 ]
+then
+    print_short_usage_and_exit
+fi
+
+EOF
+
+chmod +x $script_name
+
+${EDITOR:-vi} $script_name

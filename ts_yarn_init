@@ -1,0 +1,62 @@
+#!/bin/bash -eu
+
+# ****************************************************************************
+# DESCRIPTON
+#    Creates a yarn based typescript project
+# 
+#    Installation steps friendly copied from:
+#
+#    https://losikov.medium.com/
+#    part-1-project-initial-setup-typescript-node-js-31ba3aa7fbf1
+# ****************************************************************************
+
+# bugs and hints: lrsklemstein@gmail.com
+
+
+
+# --- constants
+
+readonly PROG=${0##*/}
+
+
+# --- functions
+
+msg() {
+    echo "[$PROG] $*" >&2
+}
+
+abort() {
+    msg "$*"
+    exit 1
+}
+
+
+# --- main
+
+if [ $# -ne 1  ]
+then
+    echo "usage: $PROG DIR"
+    exit 2
+fi
+
+project_dir="$(readlink -f $1)"
+
+test -d "$project_dir" && abort "dir \"$project_dir\" already exist."
+
+mkdir -p "$project_dir"
+
+cd "$cd_project_dir"
+
+
+msg 'init...'
+yarn init
+
+msg 'install ts types...'
+yarn add @types/node typescript 
+
+msg 'add ts-node...'
+yarn add -D ts-node
+
+msg 'Create tsconfig.json, required for tsc and ts-node...'
+yarn tsc --init --rootDir src --outDir ./bin --esModuleInterop \
+         --lib ES2019 --module commonjs --noImplicitAny true
