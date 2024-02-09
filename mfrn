@@ -47,6 +47,8 @@ def get_prog_setup_or_exit_with_usage() -> dict[str, any]:
 
     parser.add_argument('template', help='string containing %%d for numbering')
 
+    parser.add_argument('FILES', help='files to be processed', nargs='*')
+
     parser.add_argument(
         '-D', '--dir', default='.',
         help=(

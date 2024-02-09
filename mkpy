@@ -223,7 +223,7 @@ shift $((OPTIND-1))
 
 [ $# -eq 1 ] || print_short_usage_and_exit
 
-if [ "$shell_integration"="y" -a "$is_project_dir" = "y" ]
+if [ "$shell_integration" = "y" -a "$is_project_dir" = "y" ]
 then
     abort "You can not use -s with -p option."
 fi
