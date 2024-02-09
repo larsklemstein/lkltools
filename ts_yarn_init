@@ -41,6 +41,13 @@ fi
 
 project_dir="$(readlink -f $1)"
 
+src_dir=$project_dir/src
+out_dir=$project_dir/dist
+
+app_ts=$src_dir/app.ts
+app_js=$out_dir/app.js
+
+
 test -d "$project_dir" && abort "dir \"$project_dir\" already exist."
 
 mkdir -p "$project_dir"
@@ -49,37 +56,55 @@ cd "$project_dir"
 
 
 msg 'init...'
-yarn init
+yarn init -y
 
-msg 'install ts types...'
-yarn add @types/node typescript 
-
-msg 'add ts-node...'
-yarn add -D ts-node
+msg "Install typescript and save package to dev dependencies..."
+yarn add -D typescript
 
 msg 'Create tsconfig.json, required for tsc and ts-node...'
-yarn tsc --init --rootDir src --outDir ./bin --esModuleInterop \
-         --lib ES2019 --module commonjs --noImplicitAny true
 
-
-/bin/cat > README.md << EOF
-# Description
-
-...
-
-# Hints
-
-...
+/bin/cat >$project_dir/tsconfig.json <<EOF
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "lib": ["es2019"],
+    "module": "commonjs",
+    "rootDir": "${src_dir}",
+    "outDir": "${out_dir}",
+    "esModuleInterop": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"],
+}
 EOF
-/bin/cat > .gitignore << EOF
-node_modules
+
+
+msg "Install @types/node, nodemon + ts-node..."
+yarn add -D @types/node nodemon ts-node
+
+mkdir $src_dir $out_dir
+
+msg "Create initial ${app_ts}..."
+/bin/cat >$app_ts << EOF
+// your code here...
+
+console.log('Hello from app.ts...');
 EOF
 
+msg "Add yarn scripts to package.json..."
 
-git init
+# '.scripts={compile:"npx tsc", run:"node src/app.js"}' 
+#
+jqc='.scripts={'
+jqc+='compile:"npx tsc", execute:"node '$app_js'"'
+jqc+='}'
 
-git add .
+tmpf=$(mktemp)
 
-git commit -m "initial checkin"
+jq "$jqc" < package.json >$tmpf
 
-msg "Initialized git"
+mv $tmpf package.json
+
+msg "Done!"
