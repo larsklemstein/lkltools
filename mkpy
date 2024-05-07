@@ -16,8 +16,7 @@ readonly PROG=${0##*/}
 
 readonly VERSION=1.4
 
-SHORT_USAGE="$PROG [-h] [-v] [-e] [-f] [-d description] "
-SHORT_USAGE+="[-r role] [-L] [-s] [-p] PYPROG" 
+SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
 
 readonly ENTRY_COMMENT="
@@ -210,7 +209,7 @@ done
 case $role in
     example)
         fix_args=$(ap_fix_args_example) ;;
-    inout|in_out)
+    inout|in_out|input_output)
         fix_args=$(ap_fix_args_inout) ;;
     nagios*|icinga*)
         fix_args=$(ap_fix_args_inout) ;;
