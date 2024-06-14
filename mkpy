@@ -260,7 +260,7 @@ then
 
     mkdir -p "$pydir"
 
-    pyprog="$pydir/${pyprog##*/}"
+    pyprog="$pydir/${pyprog##*/}".py
 fi
 
 pyprog_basename=${pyprog#*.py}
