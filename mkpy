@@ -292,7 +292,7 @@ import sys
 
 from typing import Any, Dict  # , List, Tuple, Callable
 
-__log_level_default = logging.INFO
+__LOG_LEVEL_DEFAULT = logging.INFO
 
 
 def main() -> None:
@@ -357,7 +357,7 @@ def init_logging(setup: $dict_str_any) -> None:
             level = logging.DEBUG
             format = '%(levelname)s - %(message)s'
         else:
-            level = __log_level_default
+            level = __LOG_LEVEL_DEFAULT
             format = '%(message)s'
 
         logging.basicConfig(level=level, format=format)
