@@ -38,11 +38,15 @@ edit=n
 force_mode=n
 shell_integration=n
 is_project_dir=n
+git_message="initial version (set by $PROG)"
+with_pipenv=n
+with_docker=n
 role=example
 
-description="WHat's the blue light for?
+description="Here you should a short description at least!
 
-It light's blue..."
+Optionally followed by some lines going more
+into the details"
 
 setup_getter='setup = get_prog_setup_or_exit_with_usage()'
 
@@ -109,6 +113,16 @@ options:
 
     -p:
         interprete PYPROG as project directoy to create incl. git init
+        and (if pyenv is available) set the newest stable python version locally
+
+    -P:
+        Same as -p plus pipenv init
+
+    -D: Same as -P plus docker file creation
+
+    -I: Python docker image to use (with -D)
+
+    -m: set initial git message (used with -p and -P options)
 
     -r ROLE:
         set program role, availble:
@@ -178,7 +192,7 @@ EOF
 # main
 # ----------------------------------------------------------------------------
 
-while getopts efnvd:r:spLh opt
+while getopts efnvd:r:spPm:DI:Lh opt
 do
     case $opt in
         h)
@@ -198,6 +212,21 @@ do
             ;;
         p)
             is_project_dir=y
+            ;;
+        m)
+            git_message=$OPTARG
+            ;;
+        P)
+            is_project_dir=y
+            with_pipenv=y
+            ;;
+        D)
+            is_project_dir=y
+            with_pipenv=y
+            with_docker=y
+            ;;
+        I)
+            docker_image=$OPTARG
             ;;
         L)
            log_ini=y ;;
@@ -380,12 +409,33 @@ if [ "$is_project_dir" = "y" ]
 then
     (
         cd "$pydir"
+
+
+        pyenv_version=$(pyenv versions 2>/dev/null| grep -v '[a-Z]' | tail -1 | tr -d ' ')
+        if [ -n "$pyenv_version" ]
+        then
+            pyenv local $pyenv_version
+            msg "Set local pyenv versuion $pyenv_version"
+        fi
+
+        if which pipenv >/dev/null
+        then
+            if [ -n "$pyenv_version" ]
+            then
+                pipenv_version=${pyenv_version%.*}
+                pipenv install --python $pipenv_version
+            else
+                pipenv install
+            fi
+            msg "Initialuzed pipenv"
+        fi
+
         echo __pycache__ >> .gitignore
 
         {
             git init
             git add .
-            git commit -m "initial version"
+            git commit -m "$git_message"
         } >&2
 
         msg "Initialized git"
