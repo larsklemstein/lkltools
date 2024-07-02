@@ -13,7 +13,6 @@
 # bugs and hints: lrsklemstein@gmail.com
 
 
-
 # --- constants
 
 readonly PROG=${0##*/}
@@ -48,7 +47,22 @@ app_ts=$src_dir/app.ts
 app_js=$out_dir/app.js
 
 
-test -d "$project_dir" && abort "dir \"$project_dir\" already exist."
+# using an existing dir is only allowed with $PWD and without package.json
+if [ -d "$project_dir" ]
+then
+    project_dir_norm=$(readlink -e "$project_dir")
+    pwd_norm=$(readlink -e "$PWD")
+
+    if [ "$project_dir_norm" != "$pwd_norm" ]
+    then
+        abort "project dir \"$project_dir\" already exist."
+    fi
+
+    if [ -f "$project_dir/package.json" ]
+    then
+        abort "project dir \"$project_dir\" contains a package.json"
+    fi
+fi
 
 mkdir -p "$project_dir"
 
