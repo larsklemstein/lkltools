@@ -85,6 +85,7 @@ msg 'Create tsconfig.json, required for tsc and ts-node...'
     "module": "commonjs",
     "rootDir": "${src_dir}",
     "outDir": "${out_dir}",
+    "removeComments": true,
     "esModuleInterop": true,
     "strict": true,
     "noImplicitAny": true,
