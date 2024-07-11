@@ -42,9 +42,13 @@ project_dir="$(readlink -f $1)"
 
 src_dir=$project_dir/src
 out_dir=$project_dir/dist
+tst_dir=$project_dir/test
 
 app_ts=$src_dir/app.ts
 app_js=$out_dir/app.js
+
+jest_cfg=$project_dir/jest.config.js
+
 
 
 # using an existing dir is only allowed with $PWD and without package.json
@@ -72,8 +76,8 @@ cd "$project_dir"
 msg 'init...'
 yarn init -y
 
-msg "Install typescript and save package to dev dependencies..."
-yarn add -D typescript
+msg "Install dev dependencies..."
+yarn add --dev typescript jest ts-jest @types/jest @types/node nodemon ts-node
 
 msg 'Create tsconfig.json, required for tsc and ts-node...'
 
@@ -83,7 +87,7 @@ msg 'Create tsconfig.json, required for tsc and ts-node...'
     "target": "es2016",
     "lib": ["es2019"],
     "module": "commonjs",
-    "rootDir": "${src_dir}",
+    rootDir": "${src_dir}",
     "outDir": "${out_dir}",
     "removeComments": true,
     "esModuleInterop": true,
@@ -95,17 +99,26 @@ msg 'Create tsconfig.json, required for tsc and ts-node...'
 }
 EOF
 
-
-msg "Install @types/node, nodemon + ts-node..."
-yarn add -D @types/node nodemon ts-node
-
-mkdir $src_dir $out_dir
+mkdir $src_dir $out_dir $tst_dir
 
 msg "Create initial ${app_ts}..."
 /bin/cat >$app_ts << EOF
 // your code here...
 
 console.log('Hello from app.ts...');
+EOF
+
+msg "Create jest ${jest_cfg}..."
+/bin/cat >$jest_cfg <<EOF
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  transform: {
+    '^.+\\.ts?$': 'babel-jest'
+  },
+  testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$',
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+};
 EOF
 
 msg "Add yarn scripts to package.json..."
