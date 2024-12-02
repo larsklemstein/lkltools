@@ -5,6 +5,8 @@
 #   xre == Xresouces (file) editor
 #
 #   sudo like mechanism to easily edit and activate X environment
+#
+#   Probably deprecated.
 # ****************************************************************************
 
 # bugs and hints: lrsklemstein@gmail.com
