@@ -14,7 +14,7 @@
 
 readonly PROG=${0##*/}
 
-readonly VERSION=1.5.0
+readonly VERSION='1.6.0-alpha'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
@@ -35,6 +35,8 @@ dict_str_any='Dict[str, Any]'
 
 log_ini=n
 edit=n
+async=n
+getopts=n
 force_mode=n
 shell_integration=n
 is_project_dir=n
@@ -90,48 +92,28 @@ base usage:
 $SHORT_USAGE
 
 options:
-
-    -h:
-        show this help
-
-    -v:
-        show $PROG version
-
-    -e:
-        edit file after creation with standard editor
-
-    -f: 
-        force mode (overwrite files and directories if required)
-
-    -d:
-        set program description (for usage)
-
-    -s:
-        shell integration mode: when finished print project path to 
+    -h: show this help
+    -v: show $PROG version
+    -e: edit file after creation with standard editor
+    -f: force mode (overwrite files and directories if required)
+    -a: create asynchronious run function
+    -o: use classical getopt approach (instead of the default, argparse)
+    -d: set program description (for usage)
+    -s: shell integration mode: when finished print project path to 
         be able to create a alias like "cd \$(mkpy -s -p xxx)".
         Only applyable with -p option.
-
-    -p:
-        interprete PYPROG as project directoy to create incl. git init
+    -p: interprete PYPROG as project directoy to create incl. git init
         and (if pyenv is available) set the newest stable python version locally
-
-    -P:
-        Same as -p plus pipenv init
-
+    -P: Same as -p plus pipenv init
     -D: Same as -P plus docker file creation
-
     -I: Python docker image to use (with -D)
-
     -m: set initial git message (used with -p and -P options)
-
+    -L: create logging ini file
     -r ROLE:
         set program role, availble:
             - example : default
             - inout   : expect an input, write an output file
             - nagios  : create Nagios/Icinga style check script
-
-    -L:
-        create logging ini file
 
 bugs and hints: lrsklemstein@gmail.com
 EOF
@@ -192,7 +174,7 @@ EOF
 # main
 # ----------------------------------------------------------------------------
 
-while getopts efnvd:r:spPm:DI:Lh opt
+while getopts aoefnvd:r:spPm:DI:Lh opt
 do
     case $opt in
         h)
@@ -201,6 +183,10 @@ do
             print_version_and_exit ;;
         e)
             edit=y ;;
+        a)
+            async=y ;;
+        o)
+            getopts=y ;;
         f) 
             force_mode=y ;;
         d)
