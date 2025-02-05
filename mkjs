@@ -1,0 +1,40 @@
+#!/bin/bash -eu
+
+PROG=${0##*/}
+
+
+# --- functions
+
+print_usage_and_exit() {
+    echo "Usage: ${PROG} DIR" >&2
+    exit 2
+}
+
+
+# --- main
+
+[ $# -eq 1 ] || print_usage_and_exit
+
+dir=$1
+
+if [ $dir != . -a $dir != ./ ]
+then
+    mkdir -p "$dir" && cd "$dir"
+fi
+
+yarn init --yes
+
+/bin/cat > index.js <<EOF
+#!/usr/bin/env node
+
+'use strict';
+
+EOF
+
+chmod +x index.js
+
+tmpf=$(mktemp)
+trap '/bin/rm -f $tmpf' 0 1 2
+jq '.type="module"' package.json  > $tmpf && mv $tmpf package.json
+
+yarn create @eslint/config
