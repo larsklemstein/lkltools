@@ -1,40 +1,113 @@
 #!/bin/bash -eu
 
-PROG=${0##*/}
+readonly PROG=${0##*/}
+
+readonly ASDF_NODEJS=23.7.0
+# readonly LOCAL_NODE=
 
 
 # --- functions
 
 print_usage_and_exit() {
-    echo "Usage: ${PROG} DIR" >&2
+    echo "Usage: ${PROG} DIR [main]" >&2
     exit 2
 }
 
 
 # --- main
 
-[ $# -eq 1 ] || print_usage_and_exit
+[ $# -eq 1 -o $# -eq 2 ] || print_usage_and_exit
 
 dir=$1
+main=${2:-app.js}
+
+if [ -d "$dir" ]
+then
+    echo "Directory \"$dir\" already exist" >&2
+    exit 1
+fi
+
+[[ $main =~ \.js$ ]] || main=${main}.js
 
 if [ $dir != . -a $dir != ./ ]
 then
     mkdir -p "$dir" && cd "$dir"
 fi
 
-yarn init --yes
 
-/bin/cat > index.js <<EOF
+# --- create initial program ---
+
+email_address=$(git config user.email 2>/dev/null)
+[ -n "$email_address" ] || email_address='<unknown>'
+
+/bin/cat > $main <<EOF
 #!/usr/bin/env node
+
+/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*
+DESCRIPTION
+xxx
+
+bugs and hints: ${email_address}
+*****************************************************************************/
 
 'use strict';
 
+import logger from 'npmlog';
+
+
+function main() {
+    logger.info('Hi there...');
+}
+
+main();
 EOF
 
-chmod +x index.js
+chmod +x $main
+
+
+# --- create and adjust package.json, install logger, init eslint ----
+
+yarn init --yes
 
 tmpf=$(mktemp)
 trap '/bin/rm -f $tmpf' 0 1 2
-jq '.type="module"' package.json  > $tmpf && mv $tmpf package.json
+jq '.type="module" | .main="'"$main"'"' package.json  >$tmpf
+/bin/mv $tmpf package.json
+
+yarn add npmlog
 
 yarn create @eslint/config
+
+
+# --- project local nodejs ----
+
+if [ -n "$ASDF_NODEJS" ]
+then
+    asdf local nodejs $ASDF_NODEJS
+fi
+
+
+# --- create .env file (optionally through direnv)
+
+if which direnv >/dev/null
+then
+    ( touch .env; ) 2>/dev/null 
+    direnv allow
+    echo -e "\nCteated .env with autoloading feature through direnv\n" >&2
+fi
+
+
+# --- git stuff ----
+
+git init
+
+/bin/cat >.gitignore <<EOF
+node_modules
+tmp/
+EOF
+
+git add -A .
+git commit -m "initial version"
+
+
+echo -e "\n\nDone." >&2
