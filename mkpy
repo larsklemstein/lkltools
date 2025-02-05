@@ -326,7 +326,7 @@ def main() -> None:
 def get_prog_setup_or_exit_with_usage() -> ${dict_str_any}:
     prog = sys.argv[0]
 
-    if prog.startswith('__'):
+    if prog.startswith('.'):
         prog = os.path.splitext(prog[2:])[0]
 
     parser = argparse.ArgumentParser(
@@ -400,7 +400,6 @@ if [ "$is_project_dir" = "y" ]
 then
     (
         cd "$pydir"
-
 
         pyenv_version=$(pyenv versions 2>/dev/null| grep -v '[a-Z]' | tail -1 | tr -d ' ')
         if [ -n "$pyenv_version" ]
