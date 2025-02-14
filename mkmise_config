@@ -1,0 +1,86 @@
+#!/bin/bash -eu
+
+# Create a mise based project in the currtent directory
+# Tools to be installed can be provied optionally.
+
+
+# --- constants
+
+readonly PROG=${0##*/}
+
+
+# --- functions
+
+print_use_and_exit() {
+    echo "Usage: $PROG project_name [tools]" >&2
+    exit 2
+}
+
+__crash_handler__() {
+    local this
+    which realpath >/dev/null && this=$(realpath $0) || this=$0
+    echo -e "\n!!! Script $this crashed @ line $LINENO\n" >&2
+}
+
+trap __crash_handler__ ERR
+
+msg() {
+    echo "[$PROG] $*" >&2
+}
+
+abort() {
+    msg "$*"
+    exit 1
+}
+
+
+# --- main
+
+[ $# -ge 1 ] || print_use_and_exit
+
+project_name="$1"
+shift
+
+if [ $PWD = $HOME ]
+then
+    abort "Should not be called from your home dir"
+fi
+
+config_dir=$PWD/.config/mise
+
+if [ -d "$config_dir" ]
+then
+    abort "Directory $config_dir already exist"
+fi
+
+mkdir -p $config_dir
+
+dir_mise_files=${0%/*}/.mise_files
+[ -d $dir_mise_files ] || abort "Dir $dir_mise_file not found"
+
+/bin/cp $dir_mise_files/{config.toml,leave_project.rc} $config_dir
+
+sed "s/%PROJECT_NAME%/$project_name/g" \
+    $dir_mise_files/enter_project.rc.template > $config_dir/enter_project.rc
+
+mise trust
+
+if [ ! -d "$PWD/.git" ]
+then
+    msg "Initializing git..."
+    git init
+fi
+
+echo ".old_tmux_window_name" >> $PWD/.gitignore
+
+git add -A .
+git commit -m "init mise config"
+
+while [ $# -gt 00 ]
+do
+    tool=$1
+    mise use $tool
+    shift
+done
+
+msg "Done."
