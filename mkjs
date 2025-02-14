@@ -30,6 +30,7 @@ Usage: [options] ${PROG} DIR [main]
 
   options: -g      : handle git
            -c      : assume commonJS code
+           -e      : do not create eslint.cfg automatically
            -d text : program description
            -v      : show $PROG version
 
@@ -69,15 +70,18 @@ trap 'echo -e "\n!!! $0 crashed in line $LINENO" >&2' ERR
 # defaults
 handle_git=n
 use_commonjs=n
+eslint_init_dialogue=n
 description='<pleaase describe your program>'
 
-while getopts gcd:v opt
+while getopts gcd:ev opt
 do
     case $opt in
         g)
             handle_git=y ;;
         c)
             use_commonjs=y ;;
+        e)
+            eslint_init_dialogue=y ;;
         d)
             description=$OPTARG ;;
         v)
@@ -183,6 +187,9 @@ alter_package_json "$jq_cmd"
 
 # --- create eslint cfg
 
+if [ $eslint_init_dialogue = n ]
+then
+
 addition=
 if [ $use_commonjs = y ]
 then
@@ -201,6 +208,10 @@ export default [
   pluginJs.configs.recommended,
 ];
 EOF
+
+else
+    yarn create @eslint/config
+fi
 
 
 # --- finally: git stuff ----
