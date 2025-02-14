@@ -14,7 +14,7 @@
 
 readonly PROG=${0##*/}
 
-readonly VERSION='1.6.0-alpha'
+readonly VERSION='1.6'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
@@ -100,7 +100,7 @@ options:
     -o: use classical getopt approach (instead of the default, argparse)
     -d: set program description (for usage)
     -s: shell integration mode: when finished print project path to 
-        be able to create a alias like "cd \$(mkpy -s -p xxx)".
+        be able to create an alias like "cd \$(mkpy -s -p xxx)".
         Only applyable with -p option.
     -p: interprete PYPROG as project directoy to create incl. git init
         and (if pyenv is available) set the newest stable python version locally
