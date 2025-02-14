@@ -1,13 +1,19 @@
 #!/bin/bash -eu
 
-# create docker volume by local path content
+# ****************************************************************************
+# DESCRIPTION
+#
+# Create docker volume by local path content
+#
+# bugs and hints: lrsklemstein@gmail.com
+# ****************************************************************************
 
 
 # --- constants
 
-PROG=${0##*/}
+readonly PROG=${0##*/}
 
-IMAGE=alpine
+readonly IMAGE=alpine
 
 
 # --- functions
