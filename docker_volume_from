@@ -12,7 +12,6 @@
 # --- constants
 
 readonly PROG=${0##*/}
-
 readonly IMAGE=alpine
 
 
@@ -56,8 +55,9 @@ docker volume create "$volume_name"
 msg "Created volume \"$volume_name\""
 
 docker run -it --rm \
-    -v ${local_path}:/mnt:ro \
-    -v ${volume_name}:/mnt_vol \
+    --volume ${local_path}:/mnt:ro \
+    --volume ${volume_name}:/mnt_vol \
+    --name ${PROG/_/-}-runner \
     ${IMAGE:-alpine} \
     /bin/sh -c "/bin/cp -r /mnt/* /mnt_vol"
 
