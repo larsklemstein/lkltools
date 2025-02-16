@@ -1,0 +1,15 @@
+
+# --- set tmux window name back to previous value
+
+if which tmux >/dev/null && [ -n "$TMUX" ]
+then
+    old_window_name=$MISE_PROJECT_ROOT/.old_tmux_window_name
+
+    if [ -s "$old_window_name" ]
+    then
+        tmux rename-window $(< $old_window_name)
+        /bin/rm -f $old_window_name
+    fi
+fi
+
+echo 'Left project...' | boxes -d ansi-rounded
