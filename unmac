@@ -1,0 +1,39 @@
+#!/bin/bash -eu
+
+# Delete spookey blanks accidently create by pressing option+space
+
+readonly PROG=${0##*/}
+
+
+# --- functions
+
+print_usage_and_exit() {
+    echo "Usage: $PROG FILE [OUTFILE]" >&2
+    exit 2
+}
+
+replacer() {
+    local infile=$1
+    local outfile=$2
+
+    /bin/cat "$infile" | tr '\240' ' ' > $outfile
+}
+
+
+# --- main
+
+[ $# -eq 1 -o $# -eq 2 ] || print_usage_and_exit
+
+file="$1"
+
+if [ $# -eq 1 ]
+then
+    tmpfile=$(mktemp)
+    trap '/bin/rm -f $tmpfile' 0 1 2
+
+    replacer $file $tmpfile
+    /bin/mv $tmpfile $file
+else
+    outfile="$2"
+    replacer $file $outfile
+fi
