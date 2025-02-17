@@ -1,0 +1,8 @@
+[settings]
+env_file = '.env'
+
+[tools]
+
+[hooks]
+enter = ". $MISE_PROJECT_ROOT/.config/mise/enter_project.rc"
+leave = ". $MISE_PROJECT_ROOT/.config/mise/leave_project.rc"
