@@ -56,7 +56,7 @@ fi
 mkdir -p $config_dir
 
 dir_mise_files=${0%/*}/.mise_files
-[ -d $dir_mise_files ] || abort "Dir $dir_mise_file not found"
+[ -d $dir_mise_files ] || abort "Dir $dir_mise_files not found"
 
 /bin/cp $dir_mise_files/{config.toml,leave_project.rc} $config_dir
 
