@@ -1,28 +1,50 @@
 #!/bin/bash -eu
 
+# ****************************************************************************
+# DESCRIPTION
+#
 # Create a mise based project in the currtent directory
 # Tools to be installed can be provied optionally.
+# ****************************************************************************
+
+# bugs and hints: lrsklemstein@gmail.com
 
 
 # --- constants
 
 readonly PROG=${0##*/}
+readonly VERSION=0.2
 
 
 # --- functions
 
-print_use_and_exit() {
-    echo "Usage: $PROG project_name [tools]" >&2
-    exit 2
+print_usage_and_exit() {
+/bin/cat 1>&2 <<EOF
+
+Usage: $PROG [options] project_name [tool]
+
+  options: -g  do git check in
+           -f  use fzf to choose from installed tools
+           -v  show program version
+
+EOF
+
+exit 2
+}
+
+print_version_and_exit() {
+    echo "This is $PROG version $VERSION"
+    exit 0
 }
 
 __crash_handler__() {
-    local this
-    which realpath >/dev/null && this=$(realpath $0) || this=$0
-    echo -e "\n!!! Script $this crashed @ line $LINENO\n" >&2
+    local lineno=$1
+    echo -e "\n!!! Script $0 crashed @ line $lineno"
+    exit 1
 }
 
-trap __crash_handler__ ERR
+trap '__crash_handler__ $LINENO' ERR
+
 
 msg() {
     echo "[$PROG] $*" >&2
@@ -36,10 +58,42 @@ abort() {
 
 # --- main
 
-[ $# -ge 1 ] || print_use_and_exit
+handle_git=n
+use_fzf=n
+
+while getopts gvf opt
+do
+    case $opt in 
+        g)
+            handle_git=y
+            ;;
+        f)
+            use_fzf=y
+            ;;
+        v)
+            print_version_and_exit ;;
+        *)
+            abort "Unknow optoon $opt"
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ $# -ge 1 ] || print_usage_and_exit
 
 project_name="$1"
 shift
+
+if [ $use_fzf = y ] && ! which fzf >/dev/null
+then
+    abort "For -f option you need fzf available in \$PATH"
+fi
+
+if [ $# -gt 0 -a $use_fzf = y ]
+then
+    abort \
+        "You can not use -f switch and additional tool names at the same time"
+fi
 
 if [ $PWD = $HOME ]
 then
@@ -65,22 +119,46 @@ sed "s/%PROJECT_NAME%/$project_name/g" \
 
 mise trust
 
-if [ ! -d "$PWD/.git" ]
-then
-    msg "Initializing git..."
-    git init
-fi
-
-echo ".old_tmux_window_name" >> $PWD/.gitignore
-
-git add -A .
-git commit -m "init mise config"
-
-while [ $# -gt 00 ]
+while [ $# -gt 0 ]
 do
     tool=$1
     mise use $tool
     shift
 done
+
+if [ $use_fzf = y ]
+then
+    fzf_choice=$(mise list | awk '{print($1 " " $2)}' | fzf)
+    fzf_choice=${fzf_choice/ /@}
+    fzf_choice=${fzf_choice/-/}
+
+    if [ -n "$fzf_choice" ]
+    then
+        mise use $fzf_choice
+    fi
+fi
+
+if [ $handle_git = y ]
+then
+    if [ ! -d "$PWD/.git" ]
+    then
+        msg "Initializing git..."
+        git init
+    fi
+
+    echo ".old_tmux_window_name" >> $PWD/.gitignore
+
+    git add -A .
+    git commit -m 'initial mise config'
+fi
+
+# Let's show our new environment right away...
+enter_file=$PWD/.config/mise/enter_project.rc
+if [ -f "$enter_file" ]
+then
+    echo
+    MISE_PROJECT_ROOT=$PWD . $enter_file
+    echo
+fi
 
 msg "Done."
