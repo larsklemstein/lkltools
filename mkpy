@@ -31,8 +31,6 @@ readonly ENTRY_COMMENT="
 #
 shebang='#!/usr/bin/env python3'
 
-dict_str_any='Dict[str, Any]'
-
 log_ini=n
 edit=n
 async=n
@@ -149,10 +147,8 @@ EOF
 }
 
 get_run_func() {
-    dict_str_any=${1:-$default_dict_str_any}
-
 /bin/cat <<EOF
-def run(setup: ${dict_str_any}) -> int:
+def run(setup: t_setup) -> int:
     logger = logging.getLogger(__name__)
 ${ENTRY_COMMENT}
     logger.info('Did something...')
@@ -289,7 +285,7 @@ email=$(git config --global user.email 2>/dev/null) || true
 [ -n "$email" ] || email="<unknown>"
 
 
-run_func=$(get_run_func "$dict_str_any")
+run_func=$(get_run_func)
 
 /bin/cat >$pyprog <<EOF
 ${shebang}
@@ -303,9 +299,13 @@ ${description}
 import argparse
 import logging
 import logging.config
+import os
+import os.path
 import sys
 
 from typing import Any, Dict  # , List, Tuple, Callable
+
+type t_setup = Dict[str, Any]
 
 __LOG_LEVEL_DEFAULT = logging.INFO
 
@@ -323,7 +323,7 @@ def main() -> None:
         sys.exit(${rc_exception})
 
 
-def get_prog_setup_or_exit_with_usage() -> ${dict_str_any}:
+def get_prog_setup_or_exit_with_usage() -> t_setup:
     prog = sys.argv[0]
 
     if prog.startswith('.'):
@@ -367,7 +367,7 @@ def get_prog_doc() -> str:
         return '<???>'
 
 
-def init_logging(setup: $dict_str_any) -> None:
+def init_logging(setup: t_setup) -> None:
     """Creates either a logger by cfg file or a default instance
     with given log level by arg --log_level (otherwise irgnored)
 
