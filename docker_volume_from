@@ -4,9 +4,9 @@
 # DESCRIPTION
 #
 # Create docker volume by local path content
-#
-# bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
+
+# bugs and hints: lrsklemstein@gmail.com
 
 
 # --- constants
