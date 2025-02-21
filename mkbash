@@ -71,7 +71,6 @@ do
     case $opt in
         e)
             edit_file=y
-            echo "Set edit"
             ;;
         s)
             make_it_short=y
@@ -327,5 +326,10 @@ msg "Created new bash script $script_name"
 
 if [ $edit_file = y ]
 then
-    ${EDITOR:-vi} $script_name
+    if [[ $EDITOR =~ n?vim ]]
+    then
+        $EDITOR '+normal G' $script_name
+    else
+        ${EDITOR:-vi} $script_name
+    fi
 fi
