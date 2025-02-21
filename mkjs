@@ -14,7 +14,7 @@
 # ----------------------------------------------------------------------------
 
 readonly PROG=${0##*/}
-readonly MYVERSION=0.1
+readonly MY_VERSION='0.1'
 
 
 # ----------------------------------------------------------------------------
@@ -39,7 +39,7 @@ exit 2
 }
 
 print_version_and_exit() {
-    echo "This is $PROG version $MYVERSION"
+    echo "This is $PROG version $MY_VERSION"
     exit 0
 }
 

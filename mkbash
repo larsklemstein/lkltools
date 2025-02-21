@@ -14,7 +14,7 @@
 # ---- constants
 
 readonly PROG=${0##*/}
-readonly MY_VERSION=0.2.0
+readonly MY_VERSION='0.2.0'
 
 
 # ---- functions

@@ -13,7 +13,7 @@
 # --- constants
 
 readonly PROG=${0##*/}
-readonly VERSION=0.2
+readonly MY_VERSION='0.2.0'
 
 
 # --- functions
@@ -33,7 +33,7 @@ exit 2
 }
 
 print_version_and_exit() {
-    echo "This is $PROG version $VERSION"
+    echo "This is $PROG version $MY_VERSION"
     exit 0
 }
 
