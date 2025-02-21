@@ -14,7 +14,7 @@
 
 readonly PROG=${0##*/}
 
-readonly VERSION='1.6.0'
+readonly MY_VERSION='1.6.1'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
@@ -65,7 +65,7 @@ print_short_usage_and_exit() {
 }
 
 print_version_and_exit() {
-    echo "This is $PROG version $VERSION" >&2
+    echo "This is $PROG version $MY_VERSION" >&2
     exit 2
 }
 
