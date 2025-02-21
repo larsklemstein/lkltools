@@ -1,6 +1,12 @@
 #!/bin/bash -eu
 
-# simple initial bash script creator 
+# ***************************************************************************+
+# DESCRIPTION
+#
+# Simple initial bash script creator (for scripts which does a bit more
+# than 'hello-world'). Attempts to implement some useful basic behaviour
+# like comprehensive usage, switch handling and a propper structure.
+# ***************************************************************************+
 
 # bugs and hints: lrsklemstein@gmail.com
 
@@ -8,12 +14,33 @@
 # ---- constants
 
 readonly PROG=${0##*/}
+readonly MY_VERSION=0.2.0
 
 
 # ---- functions
 
+print_usage_and_exit() {
+/bin/cat >&2 <<EOF
+
+Usage: PROG [options] SCRIPT_NAME
+
+  options: -e : edit the file after creation (Using \$EDITOR or vi)
+           -s : create a shorter version (with less magic)
+           -f : force overwriting
+           -v : show version
+
+EOF
+
+exit 2
+}
+
+print_version_and_exit() {
+    echo "This is $PROG version $MY_VERSION"
+    exit 0
+}
+
 msg() {
-    echo "[$PROG] $%" >&2
+    echo "[$PROG] $*" >&2
 }
 
 abort() {
@@ -21,14 +48,48 @@ abort() {
     exit 1
 }
 
+__crash_handler() {
+    local lineno=$(caller | cut -d' ' -f1)
+
+    echo -e "\n!!! Script $0 crashed @ line $lineno:" >&2
+    sed -n ${lineno}p $0 >&2
+
+    exit 1
+}
+
 
 # ---- main
 
-if [ $# -ne 1 ]
-then
-    echo "usage: $PROG SCRIPT_NAME" >&2
-    exit 2
-fi
+trap __crash_handler ERR
+
+make_it_short=n
+edit_file=n
+overwrite=n
+
+while getopts esfv opt
+do
+    case $opt in
+        e)
+            edit_file=y
+            echo "Set edit"
+            ;;
+        s)
+            make_it_short=y
+            ;;
+        f)
+            overwrite=y
+            ;;
+        v)
+            print_version_and_exit
+            ;;
+        *)
+            print_usage_and_exit
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ $# -eq 1 ] || print_usage_and_exit
 
 script_name="$1"
 
@@ -38,17 +99,27 @@ email=$(git config --global user.email 2>/dev/null) || true
 [ -n "$email" ] || email="<unknown>"
 
 
-[ -f "$script_name" ] && \
-    abort "script file \"script_name\" already exists"
+if [ -f "$script_name" ]
+then
+    if [ "$overwrite" = y ]
+    then
+        /bin/rm -f "$script_name"
+    else
+        abort "script file \"script_name\" already exists"
+    fi
+fi
 
-/bin/cat >$script_name << EOF
+if [ $make_it_short = n ]
+then
+
+/bin/cat >$script_name <<EOF_LONG
 #!/bin/bash -eu
 
 # ****************************************************************************
 # DESCRIPTION
-#    Does this and that.
+# Does this and that.
 #
-#    And much more, even using description with several lines.
+# And much more, even using description with several lines.
 #
 # BASE USAGE
 # ${script_name_base} [-h][-v] FIX_ARG1
@@ -86,7 +157,16 @@ msg() {
 }
 
 abort() {
-    msg "\$*"
+    msg "\$* (rc=1)"
+    exit 1
+}
+
+__crash_handler() {
+    local lineno=\$(caller | cut -d' ' -f1)
+
+    echo -e "\\n!!! Script \$0 crashed @ line \$lineno:" >&2
+    sed -n \${lineno}p \$0 >&2
+
     exit 1
 }
 
@@ -143,26 +223,109 @@ exit 0
 # main
 # ----------------------------------------------------------------------------
 
-while getopts hv opt
+trap __crash_handler ERR
+
+special_feature=
+
+OPTERR=1
+
+while getopts hvs: opt
 do
     case \$opt in
         h)
             print_long_usage_and_exit
             ;;
-        v) print_version_and_exit
+        v)
+            print_version_and_exit
             ;;
-        *) print_short_usage_and_exit
+        s)
+            special_feature=\$OPTARG
             ;;
+        *)
+            echo >&2
+            print_short_usage_and_exit
     esac
 done
 
-if [ \$# -ne 1 ]
-then
-    print_short_usage_and_exit
-fi
+shift \$((OPTIND-1))
 
-EOF
+[ \$# -eq 1 ] || print_short_usage_and_exit
+
+
+# And here comes something useful...
+
+EOF_LONG
+
+else
+
+/bin/cat >$script_name <<EOF_SHORT
+#!/bin/bash -eu
+
+# ****************************************************************************
+# DESCRIPTION
+#
+# Does this and that.
+# ****************************************************************************
+
+# bugs and hints: $email
+
+
+# ----------------------------------------------------------------------------
+# constants
+# ----------------------------------------------------------------------------
+
+readonly PROG=\${0##*/}
+
+
+# ----------------------------------------------------------------------------
+# functions
+# ----------------------------------------------------------------------------
+
+print_usage_and_exit() {
+    echo "Usage: $PROG FIXARG" >&2
+    exit 2
+}
+
+msg() {
+    echo "[$PROG] \$*" >&2
+}
+
+abort() {
+    msg "\$* (rc=1)"
+    exit 1
+}
+
+__crash_handler() {
+    local lineno=\$(caller | cut -d' ' -f1)
+
+    echo -e "\\n!!! Script \$0 crashed @ line \$lineno:" >&2
+    sed -n \${lineno}p \$0 >&2
+
+    exit 1
+}
+
+
+# ----------------------------------------------------------------------------
+# main
+# ----------------------------------------------------------------------------
+
+trap __crash_handler ERR
+
+[ \$# -eq 1 ] || print_usage_and_exit
+
+
+# And here comes something useful...
+
+EOF_SHORT
+
+fi # if make_it_short...
+
 
 chmod +x $script_name
 
-${EDITOR:-vi} $script_name
+msg "Created new bash script $script_name"
+
+if [ $edit_file = y ]
+then
+    ${EDITOR:-vi} $script_name
+fi
