@@ -13,7 +13,7 @@
 # --- constants
 
 readonly PROG=${0##*/}
-readonly MY_VERSION='0.2.0'
+readonly MY_VERSION='0.2.1'
 
 
 # --- functions
@@ -126,6 +126,7 @@ do
     shift
 done
 
+set +e
 if [ $use_fzf = y ]
 then
     fzf_choice=$(mise list | awk '{print($1 " " $2)}' | fzf)
@@ -135,8 +136,11 @@ then
     if [ -n "$fzf_choice" ]
     then
         mise use $fzf_choice
+    else
+        msg "Tool selection aborted."
     fi
 fi
+set -e
 
 if [ $handle_git = y ]
 then
