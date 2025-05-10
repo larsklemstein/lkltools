@@ -1,0 +1,68 @@
+#!/bin/bash -eu
+
+# Create or change git branch by fzf chooser.
+# Tries to be a bit smart but not too much.
+
+# bugs and hints: lrsklemstein@gmail.com
+
+
+# --- constants
+
+readonly NEW_BRANCH_MARKER='*create new branch*'
+
+
+# --- functions
+
+in_git_tree() {
+    git status 2>&1 >/dev/null
+}
+
+git_tree_is_up_to_date() {
+    git status 2>&1 | grep -q 'Your branch is up to date with '
+}
+
+git_tree_is_clean() {
+    git status 2>&1 | grep -q 'nothing to commit, working tree clean'
+}
+
+get_git_branches() {
+    git branch | sed 's/^\** *//' | sort -in
+}
+
+get_fzf_input() {
+    get_git_branches
+    echo $NEW_BRANCH_MARKER
+}
+
+msg() {
+    echo "$*" >&2
+}
+
+abort() {
+    msg "$*"
+    exit 1
+}
+
+
+# --- main
+
+in_git_tree || abort "This seem's not to be a git tree here..."
+git_tree_is_up_to_date || abort "We're not up to date here..."
+git_tree_is_clean || abort "We're not clean here (uncommited changes etc.)"
+
+choosen=$(fzf <<< "$(get_fzf_input)")
+
+[ -n "$choosen" ] || abort "No git branch choosen..."
+
+if [ "$choosen" = "$NEW_BRANCH_MARKER" ]
+then
+    echo
+    echo -n "New branch: "
+    read new_branch
+
+    [ -n "$new_branch" ] || abort "No name given..."
+    git checkout -b "$new_branch"
+else
+    git checkout "$choosen"
+fi \
+|| abort "Git failure..."
