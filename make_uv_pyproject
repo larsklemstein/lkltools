@@ -1,9 +1,11 @@
 #!/bin/bash -eu
 
 # ****************************************************************************
-# DESCTIPZION
+# DESCTIPTION
 # Simple tool to initialize a uv based python projectz with pytest setup
 # and a Makefile.
+#
+# bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
 
 
@@ -107,6 +109,11 @@ cd "$dir"
 uv add --dev pytest pytest-coverage
 
 mkdir -p ./test/{int,unit}
+
+for dir in test test/{int,unit}
+do
+    touch "${dir}/__init__.py"
+done
 
 if [ "$type" = app ]
 then
