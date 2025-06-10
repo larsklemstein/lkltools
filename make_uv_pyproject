@@ -87,8 +87,8 @@ then
     exit 2
 fi
 
-dir="$1"
-type="${2:-app}"
+readonly dir="$1"
+readonly type="${2:-app}"
 
 if [ -d "$dir" ]
 then
@@ -110,9 +110,9 @@ uv add --dev pytest pytest-coverage
 
 mkdir -p ./test/{int,unit}
 
-for dir in test test/{int,unit}
+for sub_dir in test test/{int,unit}
 do
-    touch "${dir}/__init__.py"
+    touch "${sub_dir}/__init__.py"
 done
 
 if [ "$type" = app ]
