@@ -1,0 +1,88 @@
+#!/bin/bash -eu
+
+# ****************************************************************************
+# Description
+#
+# bugs and hints: lrsklemstein@gmail.com
+# ****************************************************************************
+
+
+# --- constants
+
+readonly PROG=${0##*/}
+
+
+# --- functions
+
+msg() {
+    echo "[$PROG] $*" >&2
+}
+
+abort() {
+    msg "$*"
+    exit 1
+}
+
+rc_msg() {
+    local tool="$1"
+    local rc=$2
+
+    local rc_word
+    case $rc in
+        0) rc_word='OK' ;;
+        *) rc_WORD='FAILED' ;;
+    esac
+
+    msg "$tool: $rc_word"
+}
+
+all_zero() {
+    local val
+
+    for val in $@
+    do
+        [ $val -ne 0 ] && return 1
+    done
+
+    return 0
+}
+
+
+# --- main
+
+if [ ! -f go.mod ]
+then
+    abort "This is probably no go project folder"
+fi
+
+msg "*** Running go pre-push actions ***"
+
+[ -f README.md ] || abort "No README.md!"
+
+gosec -quiet ./...
+rc_gosec=$?
+rc_msg gosec $rc_gosec
+
+go vet ./...
+rc_go_vet=$?
+rc_msg 'go vet' $rc_go_vet
+
+go fmt ./...
+rc_go_fmt=$?
+rc_msg 'go fmt' $rc_go_fmt
+
+rc_mdlint=0
+for md in *.md
+do
+    markdownlint $md
+    rc_last=$?
+    [ $rc_last -eq 0 ] || rc_mdlint=1
+    rc_msg "markdownlint $md" $rc_last
+done
+
+if all_zero $rc_gosec $rc_go_fmt $rc_go_vet $rc_mdlint
+then
+    msg "All good!"
+else
+    abort "Not good..."
+fi
