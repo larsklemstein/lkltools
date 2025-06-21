@@ -1,7 +1,14 @@
 #!/bin/bash -eu
 
 # ****************************************************************************
-# Description
+# DESCRIPTION
+# gpp = go pre push (actions)
+#
+# Run some commopn(?) actions before pushing (and before final add/commit)
+# to ensure that code formatting and security checks has succeeded.
+#
+# Was created after getting some trouble with functional code, which
+# pedacntic CD/CD pipelines may still reject.
 #
 # bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
