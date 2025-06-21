@@ -10,8 +10,9 @@
 # Was created after getting some trouble with functional code, which
 # pedacntic CD/CD pipelines may still reject.
 #
-# bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
+
+# bugs and hints: lrsklemstein@gmail.com
 
 
 # --- constants
