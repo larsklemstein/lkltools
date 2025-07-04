@@ -1,0 +1,112 @@
+#!/bin/bash -eu
+
+# ****************************************************************************
+# DESCRIPTION
+# cdp == cd to (git controlled) project
+#
+# This program is meant to be evaluated in shell init file to create a shell
+# function cdp. Should work with bash and zsh at this point.
+#
+# Attempted to implement some useful default behaviour.
+# To alter it, several environment variables cab be set:
+#
+# ****************************************************************************
+
+# bugs and hints: lrsklemstein@gmail.com
+
+#-----------------------------------------------------------------------------
+# constants
+#-----------------------------------------------------------------------------
+
+readonly PROG=${0##*/}
+
+
+#-----------------------------------------------------------------------------
+# functions
+#-----------------------------------------------------------------------------
+
+print_short_usage_and_exit() {
+    {
+        echo
+        echo "$PROG [options] command"
+        echo "$PROG -h"
+        echo
+    } >&2
+
+    exit 2
+}
+
+print_long_usage_and_exit() {
+    echo "Loooong usage..."
+    exit 2
+}
+
+msg() {
+    echo "[$PROG] $*" >&2
+}
+
+exitmsg() {
+    local msg="$1"
+    local rc=${2:-0}
+    echo "[$PROG] $*" >&2
+    exit $rc
+}
+
+abort() {
+    exitmsg "$* (=>Abort)" 1
+}
+
+shell_init() {
+local cdp_fqf=$(realpath $0 |sed "s%$HOME%\$HOME%")
+
+/bin/cat <<EOF
+
+unalias cdp 2>/dev/null
+
+cdp() {
+    local choosen="\$($cdp_fqf call \$@)"
+    [ -z \$choosen ] && return 0
+
+    if [ ! -d "\$choosen" ]
+    then
+        echo "Dir \$choosen does not exist!?" >&2
+        return 1
+    fi
+
+    cd \$choosen
+}
+
+EOF
+}
+
+
+#-----------------------------------------------------------------------------
+# main
+#-----------------------------------------------------------------------------
+
+opt_str=h
+
+while getopts $opt_str opt_arg
+do
+    case $opt_arg in
+        h) print_long_usage_and_exit ;;
+        *) abort "unknown param \"$opt_arg\""
+    esac
+
+    shift $((OPTIND-1))
+done
+
+if [ $# -ne 1 ]
+then
+    msg "Missing command! (please see usage with -h)"
+    print_short_usage_and_exit
+fi
+
+readonly command="$1"
+
+case $command in
+    init) shell_init ;;
+    call) ;;
+    *)
+        exitmsg "Unknown command \"$command\" specified"
+esac
