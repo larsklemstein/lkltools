@@ -117,7 +117,7 @@ done
 
 if [ "$type" = app ]
 then
-    mkpy ${dir##*/}.py
+    mkpy -L ${dir##*/}.py
     /bin/rm -f main.py
 fi
 

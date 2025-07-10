@@ -8,7 +8,7 @@
 # to ensure that code formatting and security checks has succeeded.
 #
 # Was created after getting some trouble with functional code, which
-# pedacntic CD/CD pipelines may still reject.
+# pedantic CD/CD pipelines may still reject.
 #
 # ****************************************************************************
 
