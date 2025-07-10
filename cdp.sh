@@ -66,7 +66,6 @@ Environment vairables
                     containing one or more git folders of interest.
 
   CDP_OWN_REPOS:    a list of remote base addresses separated by +
-
 EOF
 exit 2
 }
@@ -94,12 +93,15 @@ abort() {
 shell_init() {
 local cdp_fqf=$(realpath $0 |sed "s%$HOME%\$HOME%")
 
+local flags=
+[ "$ignore_no_remote" = n ] && flags+=' -n'
+
 /bin/cat <<EOF
 
 unalias cdp 2>/dev/null
 
 cdp() {
-    local choosen="\$($cdp_fqf call \$@)"
+    local choosen="\$($cdp_fqf ${flags} call \$@)"
     [ -z \$choosen ] && return 0
 
     if [ ! -d "\$choosen" ]
@@ -130,7 +132,7 @@ choose_folder() {
     for root_folder in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
     do
         fd -H '^\.git$' -t directory $root_folder \
-            | sed -e "s%$HOME/%%" -e 's%/\.git/$%%' >> $tmp_fd
+            | sed -e 's%/\.git/$%%' >> $tmp_fd
     done
 
     local folder
@@ -138,7 +140,7 @@ choose_folder() {
 
     for folder in $(< $tmp_fd)
     do
-        cd "$HOME/${folder}"
+        cd "${folder}"
         remote=$(git remote -v | awk '/^origin/ && NR==1 {print($2)}')
         if [ -z "$remote" -a "$ignore_no_remote" = n ] || owned_remote $remote
         then
@@ -150,7 +152,7 @@ choose_folder() {
 
     /bin/rm -rf $tmpd
 
-    echo "$HOME/$choosen"
+    echo "$choosen"
 }
 
 owned_remote() {
@@ -182,6 +184,7 @@ do
         abort "env var \$$env_var not set"
     fi
 done
+
 set -u
 
 opt_str=hvn
@@ -210,7 +213,7 @@ readonly command="$1"
 
 case $command in
     init) shell_init ;;
-    call) choose_folder $ignore_no_remote ;;
+    call) choose_folder $ignore_no_remote "$*" ;;
     *)
         exitmsg "Unknown command \"$command\" specified"
 esac
