@@ -19,6 +19,7 @@
 #-----------------------------------------------------------------------------
 
 readonly PROG=${0##*/}
+readonly MY_VERSION=1.0.0
 
 
 #-----------------------------------------------------------------------------
@@ -70,6 +71,11 @@ EOF
 exit 2
 }
 
+show_version_and_exit() {
+    echo "This is $PROG version $MY_VERSION"
+    exit 0
+}
+
 msg() {
     echo "[$PROG] $*" >&2
 }
@@ -116,6 +122,9 @@ choose_folder() {
 
     local tmp_fd=$tmpd/fd
     local tmp_own=$tmpd/own
+
+    touch $tmp_fd $tmp_own
+
     local cwd_org="$PWD"
 
     for root_folder in $(tr : '\n' <<< $CDP_BASE_FOLDERS)
@@ -141,7 +150,7 @@ choose_folder() {
 
     /bin/rm -rf $tmpd
 
-    echo "$choosen"
+    echo "$HOME/$choosen"
 }
 
 owned_remote() {
@@ -175,7 +184,7 @@ do
 done
 set -u
 
-opt_str=hn
+opt_str=hvn
 
 ignore_no_remote=y
 
@@ -183,6 +192,7 @@ while getopts $opt_str opt_arg
 do
     case $opt_arg in
         h) print_long_usage_and_exit ;;
+        v) show_version_and_exit ;;
         n) ignore_no_remote="n" ;;
         *) abort "unknown param \"$opt_arg\""
     esac
