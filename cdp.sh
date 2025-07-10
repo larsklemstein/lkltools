@@ -45,7 +45,7 @@ git controlled folder with or without a remote that belongs to us.
 The tool relies on two environment variables CDP_BASE_FOLDERS and 
 CDP_OWN_REPOS to determine, which base folders should be considered
 and which are the ones "owned" by us (by comparing the git remote with
-a list of "owned" remotes like https://github.com/frankzappa etc.).
+a list of "owned" remotes like https://github.com/frankzappa etc.). 
 
 Usage
   $PROG [options] command
@@ -62,7 +62,7 @@ Options
   -n  : do not ignore git folders without remote
 
 Environment vairables
-  CDP_BASE_FODLERS: a list of folders separated by : to act as base folders
+  CDP_BASE_FODLERS: a list of folders separated by + to act as base folders
                     containing one or more git folders of interest.
 
   CDP_OWN_REPOS:    a list of remote base addresses separated by +
@@ -127,7 +127,7 @@ choose_folder() {
 
     local cwd_org="$PWD"
 
-    for root_folder in $(tr : '\n' <<< $CDP_BASE_FOLDERS)
+    for root_folder in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
     do
         fd -H '^\.git$' -t directory $root_folder \
             | sed -e "s%$HOME/%%" -e 's%/\.git/$%%' >> $tmp_fd
