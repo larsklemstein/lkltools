@@ -14,7 +14,7 @@
 
 readonly PROG=${0##*/}
 
-readonly MY_VERSION='1.6.1'
+readonly MY_VERSION='1.7.0'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
@@ -32,16 +32,8 @@ readonly ENTRY_COMMENT="
 shebang='#!/usr/bin/env python3'
 
 log_ini=n
-edit=n
 async=n
-getopts=n
 force_mode=n
-shell_integration=n
-is_project_dir=n
-git_message="initial version (set by $PROG)"
-with_pipenv=n
-with_docker=n
-role=example
 
 description="Here you should a short description at least!
 
@@ -92,26 +84,10 @@ $SHORT_USAGE
 options:
     -h: show this help
     -v: show $PROG version
-    -e: edit file after creation with standard editor
     -f: force mode (overwrite files and directories if required)
     -a: create asynchronious run function
-    -o: use classical getopt approach (instead of the default, argparse)
     -d: set program description (for usage)
-    -s: shell integration mode: when finished print project path to 
-        be able to create an alias like "cd \$(mkpy -s -p xxx)".
-        Only applyable with -p option.
-    -p: interprete PYPROG as project directoy to create incl. git init
-        and (if pyenv is available) set the newest stable python version locally
-    -P: Same as -p plus pipenv init
-    -D: Same as -P plus docker file creation
-    -I: Python docker image to use (with -D)
-    -m: set initial git message (used with -p and -P options)
     -L: create logging ini file
-    -r ROLE:
-        set program role, availble:
-            - example : default
-            - inout   : expect an input, write an output file
-            - nagios  : create Nagios/Icinga style check script
 
 bugs and hints: lrsklemstein@gmail.com
 EOF
@@ -136,16 +112,6 @@ ap_fix_args_example() {
 EOF
 }
 
-ap_fix_args_inout() {
-/bin/cat << EOF
-    parser.add_argument(
-        'infile', metavar='INFILE', type=str, help='input file',
-    )
-
-    parser.add_argument(
-EOF
-}
-
 get_run_func() {
 /bin/cat <<EOF
 def run(setup: t_setup) -> int:
@@ -157,58 +123,26 @@ ${ENTRY_COMMENT}
 EOF
 }
 
-setup_getter_nagios() {
-/bin/cat <<EOF
-    try:
-        setup = get_prog_setup_or_exit_with_usage()
-    except:
-        sys.exit(2)
-EOF
-}
 
 # ----------------------------------------------------------------------------
 # main
 # ----------------------------------------------------------------------------
 
-while getopts aoefnvd:r:spPm:DI:Lh opt
+while getopts afvLh opt
 do
     case $opt in
         h)
             print_long_usage_and_exit ;;
         v)
             print_version_and_exit ;;
-        e)
-            edit=y ;;
         a)
             async=y ;;
-        o)
-            getopts=y ;;
         f) 
             force_mode=y ;;
         d)
             description=$OPTARG ;;
-        r)
-            role=$OPTARG ;;
-        s)
-            shell_integration=y
-            ;;
-        p)
-            is_project_dir=y
-            ;;
         m)
             git_message=$OPTARG
-            ;;
-        P)
-            is_project_dir=y
-            with_pipenv=y
-            ;;
-        D)
-            is_project_dir=y
-            with_pipenv=y
-            with_docker=y
-            ;;
-        I)
-            docker_image=$OPTARG
             ;;
         L)
            log_ini=y ;;
@@ -217,36 +151,16 @@ do
     esac
 done
 
-case $role in
-    example)
-        fix_args=$(ap_fix_args_example) ;;
-    inout|in_out|input_output)
-        fix_args=$(ap_fix_args_inout) ;;
-    nagios*|icinga*)
-        fix_args=$(ap_fix_args_inout) ;;
-    *)
-        msg "specified role \"$role\" not implemented"
-        exit 2
-esac
+fix_args=$(ap_fix_args_example)
 
 shift $((OPTIND-1))
 
 [ $# -eq 1 ] || print_short_usage_and_exit
 
-if [ "$shell_integration" = "y" -a "$is_project_dir" = "y" ]
-then
-    abort "You can not use -s with -p option."
-fi
-
 pyprog="$1"
 
 if [ "$pyprog" = "." ]
 then
-    if [ "$is_project_dir" = "y" ]
-    then
-        abort "You can not use the dot option together with the -p flag"
-    fi
-
     if [[ $PWD = $HOME || $PWD != *$HOME/* ]]
     then
         echo "Can not autor-create python program here." >&2
@@ -255,26 +169,7 @@ then
     pyprog=${PWD##*/}
 fi
 
-if [ "$is_project_dir" = "y" ]
-then
-    pydir="${pyprog%.py}"
-    if [ -d "$pydir" ]
-    then
-        if [ "$force_mode" = "y" ]
-        then
-            /bin/rm -rf "$pydir"
-            msg "!!! Deleted existing dir \"$pydir\" due force mode"
-        else
-            abort "Project dir \"$pydir\" already exist."
-        fi
-    fi
-
-    mkdir -p "$pydir"
-
-    pyprog="$pydir/${pyprog##*/}".py
-fi
-
-pyprog_basename=${pyprog#*.py}
+readonly pyprog_basename=${pyprog#*.py}
 
 if [ -f "$pyprog" -a "$force_mode" = n ]
 then
@@ -396,46 +291,12 @@ chmod +x $pyprog
 
 msg "Created \"$pyprog\""
 
-if [ "$is_project_dir" = "y" ]
-then
-    (
-        cd "$pydir"
-
-        pyenv_version=$(pyenv versions 2>/dev/null| grep -v '[a-Z]' | tail -1 | tr -d ' ')
-        if [ -n "$pyenv_version" ]
-        then
-            pyenv local $pyenv_version
-            msg "Set local pyenv versuion $pyenv_version"
-        fi
-
-        if which pipenv >/dev/null
-        then
-            if [ -n "$pyenv_version" ]
-            then
-                pipenv_version=${pyenv_version%.*}
-                pipenv install --python $pipenv_version
-            else
-                pipenv install
-            fi
-            msg "Initialuzed pipenv"
-        fi
-
-        echo __pycache__ >> .gitignore
-
-        {
-            git init
-            git add .
-            git commit -m "$git_message"
-        } >&2
-
-        msg "Initialized git"
-    )
-fi
-
 if [ "$log_ini" = y ]
 then
 
+set -x
 log_ini_file="${pyprog_basename}_log.ini"
+set +x
 log_output_file="/var/log/${pyprog_basename}.log"
 
 sed "s!%log_output_file%!$log_output_file!g" >$log_ini_file <<EOF
@@ -476,24 +337,4 @@ EOF
 msg "Created $log_ini_file"
 msg "(currently creating log files as $log_output_file, please adjust!)"
 
-fi
-
-if [ $edit = y ]
-then
-    editor=${EDITOR:-vi}
-
-    if egrep -q "$editor" <<< '^(n?vi|n?vim)$'
-    then
-        p="logger\.info.*'Done something"
-        typeset -i run_pos=$(grep -n "$p" $pyprog  | cut -d: -f1)
-        run_pos=run_pos-1
-        $editor +$run_pos $pyprog
-    else
-        $editor $pyprog
-    fi
-fi
-
-if [ "$shell_integration" = "y" ]
-then
-    echo "$(readlink -f $pydir)"
 fi
