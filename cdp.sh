@@ -143,7 +143,7 @@ cache_is_outdated_or_empty() {
 
     for base in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
     do
-        found=$(find $base -type d -name '.git' -newer "$CDP_CACHE")
+        found=$(find $base -type d -name '.git' -newer "$CDP_CACHE" 2>/dev/null)
         test -n "$found" && return 0
     done
 
