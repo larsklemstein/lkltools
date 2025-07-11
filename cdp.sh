@@ -20,7 +20,7 @@
 #-----------------------------------------------------------------------------
 
 readonly PROG=${0##*/}
-readonly MY_VERSION=1.1.0
+readonly MY_VERSION=1.3.0
 
 readonly CDP_CACHE=$HOME/.local/share/cdp/cache
 
@@ -61,8 +61,14 @@ Commands
         The actual exeuction of the git selection (should be executed 
         via cdp function created by the init step).
 
+  update_cache:
+        Update the cache file with the current git folders.
+
 Options
-  -n: do not ignore git folders without remote
+  -n         : do not ignore git folders without remote
+  -d <depth> : set the max depth of the search for git folders (default: 10)
+  -c <sec>   : set the cache age in seconds (default: 0, means no cache)
+  -e <file>  : source the environment variables from the given file
 
 Environment vairables
   CDP_BASE_FODLERS: a list of folders separated by + to act as base folders
@@ -80,6 +86,10 @@ show_version_and_exit() {
 
 msg() {
     echo "[$PROG] $*" >&2
+}
+
+dmsg() {
+    [ $DEBUG = y ] && echo "[$PROG DEBUG] $*" >&2 || true
 }
 
 exitmsg() {
@@ -105,7 +115,7 @@ local flags=
 unalias cdp 2>/dev/null
 
 cdp() {
-    local choosen="\$($cdp_fqf ${flags} call \$@)"
+    local choosen="\$($cdp_fqf ${flags} -c900 call)"
     [ -z \$choosen ] && return 0
 
     if [ ! -d "\$choosen" ]
@@ -118,25 +128,51 @@ cdp() {
 }
 
 EOF
+
+    msg "You can call <$PROG update_cache> by cron to keep the cache fresh."
 }
 
 choose_folder() {
     local ignore_no_remote="$1"
+    local fd_depth="$2"
 
-    if cache_is_outdated_or_empty
+    if cache_is_outdated_or_empty $cache_for
     then
-        local tmpf=$(mktemp)
-        get_own_repos $ignore_no_remote >$tmpf
-        /bin/mv $tmpf $CDP_CACHE
+        dmsg 'outdated cache, reloading...'
+        update_cache
+    else
+        dmsg 'cache is up to date, using it...'
     fi
 
+    dmsg "Using cache file $CDP_CACHE, call fzf..."
     choosen=$(fzf < $CDP_CACHE)
+
+    dmsg "...back; choosen: $choosen"
 
     eval echo "$choosen"
 }
 
+update_cache() {
+    dmsg "Updating cache file ${CDP_CACHE}"
+    local tmpf=$(mktemp)
+
+    get_own_repos $ignore_no_remote "$fd_depth" >$tmpf
+
+    /bin/mv $tmpf $CDP_CACHE
+    dmsg "Cache updated"
+}
+
 cache_is_outdated_or_empty() {
-    test ! -s "$CDP_CACHE" && { echo "return here?!"; return 0; }
+    local cache_for="$1"
+
+    test ! -s "$CDP_CACHE" && return 0
+
+    local cache_age=$(get_file_age_in_sec "$CDP_CACHE")
+    if [ $cache_age -lt $((cache_for * 60)) ]
+    then
+        dmsg "Cache is still fresh ($cache_age sec old), not reloading"
+        return 1
+    fi
 
     local base
     local found
@@ -153,6 +189,7 @@ cache_is_outdated_or_empty() {
 
 get_own_repos() {
     local ignore_no_remote="$1"
+    local fd_depth="$2"
 
     local root_folder
     local tmpd=$(mktemp -d)
@@ -164,8 +201,8 @@ get_own_repos() {
 
     for root_folder in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
     do
-        fd -H '^\.git$' -t directory $root_folder \
-            | sed -e 's%/\.git/$%%' >> $tmp_fd
+        fd -d${fd_depth} -H '^\.git$' -t directory $root_folder \
+            | sed -e "s%$HOME/%~/%g" -e 's%/\.git/$%%' >> $tmp_fd
     done
 
     local folder
@@ -200,14 +237,61 @@ owned_remote() {
     return 1
 }
 
+get_file_age_in_sec() {
+    echo $(($(/bin/date +%s)-$(stat -f %B "$1")))
+}
+
 
 #-----------------------------------------------------------------------------
 # main
 #-----------------------------------------------------------------------------
 
+DEBUG=n
+
 cdp_share_dir="${CDP_CACHE%/*}"
 test -d $cdp_share_dir || mkdir -p "$cdp_share_dir"
 test -f $CDP_CACHE || touch $CDP_CACHE
+
+opt_str=hvnDd:c:e:
+
+ignore_no_remote=y
+declare -i cache_for=0
+fd_depth=10
+env_file=
+
+while getopts $opt_str arg
+do
+    case $arg in
+        h) print_long_usage_and_exit ;;
+        v) show_version_and_exit ;;
+        c) cache_for="$OPTARG" ;;
+        e) env_file="$OPTARG" ;;
+        D) DEBUG=y ;;
+        d) fd_depth="$OPTARG" ;;
+        n) ignore_no_remote="n" ;;
+        *) abort "unknown param \"$opt_arg\""
+    esac
+
+done
+
+shift $((OPTIND-1))
+
+if [ $# -ne 1 ]
+then
+    msg "Missing command! (please see more comprehensive usage with -h)"
+    print_short_usage_and_exit
+fi
+
+if [ -n "$env_file" ]
+then
+    if [ ! -f "$env_file" ]
+    then
+        abort "File $env_file does not exist"
+    fi
+
+    msg "Sourcing environment file $env_file"
+    source "$env_file"
+fi
 
 set +u
 for env_var in CDP_BASE_FOLDERS CDP_OWN_REPOS
@@ -218,36 +302,17 @@ do
         abort "env var \$$env_var not set"
     fi
 done
-
 set -u
-
-opt_str=hvn
-
-ignore_no_remote=y
-
-while getopts $opt_str opt_arg
-do
-    case $opt_arg in
-        h) print_long_usage_and_exit ;;
-        v) show_version_and_exit ;;
-        n) ignore_no_remote="n" ;;
-        *) abort "unknown param \"$opt_arg\""
-    esac
-
-    shift $((OPTIND-1))
-done
-
-if [ $# -ne 1 ]
-then
-    msg "Missing command! (please see more comprehensive usage with -h)"
-    print_short_usage_and_exit
-fi
 
 readonly command="$1"
 
 case $command in
-    init) shell_init ;;
-    call) choose_folder $ignore_no_remote "$*" ;;
+    init)
+        shell_init ;;
+    call)
+        choose_folder $ignore_no_remote "$fd_depth" "$cache_for" ;;
+    update_cache)
+        update_cache ;;
     *)
         exitmsg "Unknown command \"$command\" specified"
 esac
