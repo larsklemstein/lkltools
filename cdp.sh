@@ -136,7 +136,7 @@ choose_folder() {
 }
 
 cache_is_outdated_or_empty() {
-    test ! -s "$CDP_CACHE" && return 0
+    test ! -s "$CDP_CACHE" && { echo "return here?!"; return 0; }
 
     local base
     local found
@@ -144,7 +144,7 @@ cache_is_outdated_or_empty() {
     for base in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
     do
         found=$(find $base -type d -name '.git' -newer "$CDP_CACHE")
-        test -z "$found" || return 0
+        test -n "$found" && return 0
     done
 
     # OK, you won...
@@ -181,11 +181,8 @@ get_own_repos() {
         fi
     done
 
-    choosen=$(fzf < $tmp_own)
-
+    /bin/cat "$tmp_own"
     /bin/rm -rf $tmpd
-
-    echo "$choosen"
 }
 
 owned_remote() {
