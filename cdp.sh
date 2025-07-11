@@ -13,13 +13,16 @@
 # ****************************************************************************
 
 # bugs and hints: lrsklemstein@gmail.com
+#
 
 #-----------------------------------------------------------------------------
 # constants
 #-----------------------------------------------------------------------------
 
 readonly PROG=${0##*/}
-readonly MY_VERSION=1.0.0
+readonly MY_VERSION=1.1.0
+
+readonly CDP_CACHE=$HOME/.local/share/cdp/cache
 
 
 #-----------------------------------------------------------------------------
@@ -59,7 +62,7 @@ Commands
         via cdp function created by the init step).
 
 Options
-  -n  : do not ignore git folders without remote
+  -n: do not ignore git folders without remote
 
 Environment vairables
   CDP_BASE_FODLERS: a list of folders separated by + to act as base folders
@@ -83,6 +86,7 @@ msg() {
 exitmsg() {
     local msg="$1"
     local rc=${2:-0}
+
     echo "[$PROG] $*" >&2
     exit $rc
 }
@@ -117,6 +121,37 @@ EOF
 choose_folder() {
     local ignore_no_remote="$1"
 
+    if cache_is_outdated_or_empty
+    then
+        local tmpf=$(mktemp)
+        get_own_repos $ignore_no_remote >$tmpf
+        /bin/mv $tmpf $CDP_CACHE
+    fi
+
+    choosen=$(fzf < $CDP_CACHE)
+
+    eval echo "$choosen"
+}
+
+cache_is_outdated_or_empty() {
+    test ! -s "$CDP_CACHE" && return 0
+
+    local base
+    local found
+
+    for base in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
+    do
+        found=$(find $base -type d -name '.git' -newer "$CDP_CACHE")
+        test -z "$found" || return 0
+    done
+
+    # OK, you won...
+    return 1
+}
+
+get_own_repos() {
+    local ignore_no_remote="$1"
+
     local root_folder
     local tmpd=$(mktemp -d)
 
@@ -125,12 +160,10 @@ choose_folder() {
 
     touch $tmp_fd $tmp_own
 
-    local cwd_org="$PWD"
-
     for root_folder in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
     do
         fd -H '^\.git$' -t directory $root_folder \
-            | sed -e "s%$HOME/%%" -e 's%/\.git/$%%' >> $tmp_fd
+            | sed -e "s%$HOME/%\~/%" -e 's%/\.git/$%%' >> $tmp_fd
     done
 
     local folder
@@ -138,7 +171,7 @@ choose_folder() {
 
     for folder in $(< $tmp_fd)
     do
-        cd "$HOME/${folder}"
+        eval cd "${folder}"
         remote=$(git remote -v | awk '/^origin/ && NR==1 {print($2)}')
         if [ -z "$remote" -a "$ignore_no_remote" = n ] || owned_remote $remote
         then
@@ -146,11 +179,8 @@ choose_folder() {
         fi
     done
 
-    choosen=$(fzf < $tmp_own)
-
-    /bin/rm -rf $tmpd
-
-    echo "$HOME/$choosen"
+    /bin/cat $tmp_own
+    rm -rf $tmpd
 }
 
 owned_remote() {
@@ -172,6 +202,10 @@ owned_remote() {
 #-----------------------------------------------------------------------------
 # main
 #-----------------------------------------------------------------------------
+
+cdp_share_dir="${CDP_CACHE%/*}"
+test -d $cdp_share_dir || mkdir -p "$cdp_share_dir"
+test -f $CDP_CACHE || touch $CDP_CACHE
 
 set +u
 for env_var in CDP_BASE_FOLDERS CDP_OWN_REPOS
