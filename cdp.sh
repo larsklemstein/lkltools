@@ -20,7 +20,7 @@
 #-----------------------------------------------------------------------------
 
 readonly PROG=${0##*/}
-readonly MY_VERSION=1.3.0
+readonly MY_VERSION=1.3.1
 
 readonly CDP_CACHE=$HOME/.local/share/cdp/cache
 
@@ -238,7 +238,16 @@ owned_remote() {
 }
 
 get_file_age_in_sec() {
-    echo $(($(/bin/date +%s)-$(stat -f %B "$1")))
+    local unixtime_file
+
+    if [ $(uname -o) = Darwin ]
+    then
+        unixtime_file=$(stat -f %B "$1")
+    else
+        unixtime_file=$(stat -t | awk '{print($13)}')
+    fi
+
+    echo $(($(/bin/date +%s)-$unixtime_file))
 }
 
 
