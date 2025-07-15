@@ -160,6 +160,11 @@ update_cache() {
 
     /bin/mv $tmpf $CDP_CACHE
     dmsg "Cache updated"
+
+    if [ ! -s "$CDP_CACHE" ]
+    then
+        dmsg "WARNING: cache is empty"
+    fi
 }
 
 cache_is_outdated_or_empty() {
@@ -201,9 +206,13 @@ get_own_repos() {
 
     for root_folder in $(tr '+' '\n' <<< $CDP_BASE_FOLDERS)
     do
-        fd -d${fd_depth} -H '^\.git$' -t directory $root_folder \
+        dmsg "Scan root folder ${root_folder}..."
+        fd -d${fd_depth} -H '^\.git$' -t directory "$root_folder" \
             | sed -e "s%$HOME/%~/%g" -e 's%/\.git/$%%' >> $tmp_fd
     done
+
+    dmsg "tmd_fd:"
+    [ $DEBUG = y ] && /bin/cat $tmp_fd >&2
 
     local folder
     local remote
@@ -244,7 +253,7 @@ get_file_age_in_sec() {
     then
         unixtime_file=$(stat -f %B "$1")
     else
-        unixtime_file=$(stat -t | awk '{print($13)}')
+        unixtime_file=$(stat -t "$1" | awk '{print($13)}')
     fi
 
     echo $(($(/bin/date +%s)-$unixtime_file))
