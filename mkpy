@@ -14,7 +14,7 @@
 
 readonly PROG=${0##*/}
 
-readonly MY_VERSION='1.7.0'
+readonly MY_VERSION='1.8.0'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
