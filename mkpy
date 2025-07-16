@@ -35,7 +35,7 @@ log_ini=n
 async=n
 force_mode=n
 
-description="Here you should a short description at least!
+description="Here you should add a short description at least!
 
 Optionally followed by some lines going more
 into the details"
@@ -238,12 +238,12 @@ ${fix_args}
 #   )
 
     log_group.add_argument(
-        '--debug', action='store_true',
+        '--debug', '-D', action='store_true', dest='debug',
         help='enable debug log level',
     )
 
     log_group.add_argument(
-        '--log_cfg', dest='log_cfg',
+        '--log_cfg', '-L', dest='log_cfg',
         help='optional logging cfg in ini format',
     )
 
@@ -301,7 +301,8 @@ log_output_file="/var/log/${pyprog_basename}.log"
 
 sed "s!%log_output_file%!$log_output_file!g" >$log_ini_file <<EOF
 [loggers]
-keys=root
+keys=root,MAIN
+# keys=root,MAIN,requests
 
 [handlers]
 keys=consoleHandler,fileHandler
@@ -310,12 +311,22 @@ keys=consoleHandler,fileHandler
 keys=consoleFormatter,logfileFormatter
 
 [logger_root]
+level=ERROR
+handlers=
+
+[logger_MAIN]
 level=DEBUG
-handlers=fileHandler,consoleHandler
+handlers=consoleHandler,fileHandler
+qualname=__main__
+
+# [logger_requests]
+# level=DEBUG
+# handlers=consoleHandler,fileHandler
+# qualname=urllib3
 
 [handler_consoleHandler]
 class=StreamHandler
-level=INFO
+level=DEBUG
 formatter=consoleFormatter
 args=(sys.stderr,)
 
@@ -326,15 +337,15 @@ formatter=logfileFormatter
 args=('%log_output_file%','midnight',1,30)
 
 [formatter_consoleFormatter]
-format=%(levelname)s - %(message)s
+format=%(levelname)s - %(name)s - %(message)s
 datefmt=
 
 [formatter_logfileFormatter]
-format=%(asctime)s - %(levelname)s - line %(lineno)s in %(funcName)s(), PID %(process)s - %(message)s
+format=%(asctime)s - %(levelname)s - %(name)s - line %(lineno)s in %(funcName)s(), PID %(process)s - %(message)s
 datefmt=
 EOF
 
 msg "Created $log_ini_file"
-msg "(currently creating log files as $log_output_file, please adjust!)"
+msg "!!! currently creating log files as $log_output_file, please adjust..."
 
 fi
