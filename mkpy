@@ -14,7 +14,7 @@
 
 readonly PROG=${0##*/}
 
-readonly MY_VERSION='1.8.0'
+readonly MY_VERSION='1.8.1'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
@@ -200,7 +200,7 @@ import sys
 
 from typing import Any, Dict  # , List, Tuple, Callable
 
-type t_setup = Dict[str, Any]
+t_setup = Dict[str, Any]
 
 __LOG_LEVEL_DEFAULT = logging.INFO
 
