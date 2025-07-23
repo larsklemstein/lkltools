@@ -14,7 +14,7 @@
 
 readonly PROG=${0##*/}
 
-readonly MY_VERSION='1.8.1'
+readonly MY_VERSION='1.9.0'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG" 
 readonly SHORT_USAGE
@@ -34,6 +34,7 @@ shebang='#!/usr/bin/env python3'
 log_ini=n
 async=n
 force_mode=n
+create_uv_caller=n
 
 description="Here you should add a short description at least!
 
@@ -86,6 +87,7 @@ options:
     -v: show $PROG version
     -f: force mode (overwrite files and directories if required)
     -a: create asynchronious run function
+    -u: create uv caller (e.g. mytool for mytool.py)
     -d: set program description (for usage)
     -L: create logging ini file
 
@@ -128,7 +130,7 @@ EOF
 # main
 # ----------------------------------------------------------------------------
 
-while getopts afvLh opt
+while getopts afvLhu opt
 do
     case $opt in
         h)
@@ -139,6 +141,8 @@ do
             async=y ;;
         f) 
             force_mode=y ;;
+        u) 
+            create_uv_caller=y ;;
         d)
             description=$OPTARG ;;
         m)
@@ -169,7 +173,19 @@ then
     pyprog=${PWD##*/}
 fi
 
-readonly pyprog_basename=${pyprog#*.py}
+# extend pyprog with .py if not already done
+pyprog_basename=${pyprog%*.py}
+if [ "$pyprog_basename" = "$pyprog" ]
+then
+    pyprog=${pyprog_basename}.py
+    msg "Extend program name with .py"
+fi
+
+msg "pyprog_basename: $pyprog_basename"
+if [ -f "$pyprog_basename" ]
+then
+    abort "\"$pyprog_basename\" already exist"
+fi
 
 if [ -f "$pyprog" -a "$force_mode" = n ]
 then
@@ -219,13 +235,8 @@ def main() -> None:
 
 
 def get_prog_setup_or_exit_with_usage() -> t_setup:
-    prog = sys.argv[0]
-
-    if prog.startswith('.'):
-        prog = os.path.splitext(prog[2:])[0]
-
     parser = argparse.ArgumentParser(
-                description=get_prog_doc(), prog=prog,
+                description=get_prog_doc(), prog=get_prog_name(),
                 formatter_class=argparse.RawTextHelpFormatter,
             )
 
@@ -251,6 +262,25 @@ ${fix_args}
     args = {k: '' if v is None else v for k, v in args.items()}
 
     return args
+
+
+def get_prog_name() -> str:
+    """Returns the name of the program, without path and extension *OR
+    take the value from the environment variable __PY_CALLER__ if set.
+    """
+
+    py_caller_var = '__PY_CALLER__'
+
+    if py_caller_var in os.environ:
+        prog = os.environ[py_caller_var]
+    else:
+        prog = sys.argv[0]
+
+        if prog.startswith('.'):
+            prog = os.path.splitext(prog[2:])[0]
+        prog = os.path.basename(prog)
+
+    return prog
 
 
 def get_prog_doc() -> str:
@@ -290,6 +320,26 @@ EOF
 chmod +x $pyprog
 
 msg "Created \"$pyprog\""
+
+if [ "$create_uv_caller" = y ]
+then
+    uv_caller="${pyprog_basename%.py}"
+    if [ -f "$uv_caller" -a "$force_mode" = n ]
+    then
+        abort "\"$uv_caller\" already exist"
+    fi
+
+/bin/cat >$uv_caller <<EOF
+#!/bin/bash -eu
+
+MYSELF=\$(realpath \$0)
+PYPROG=\$MYSELF.py
+
+__PY_CALLER__="$pyprog_basename" exec uv run \$PYPROG "\$@"
+EOF
+
+chmod +x $uv_caller
+fi
 
 if [ "$log_ini" = y ]
 then
