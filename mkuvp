@@ -90,6 +90,12 @@ fi
 readonly dir="$1"
 readonly type="${2:-app}"
 
+if [ $type != app -a $type != lib ]
+then
+    echo "The (optional) type must be app or lib, but is <$type>" >&2
+    exit 1
+fi
+
 if [ -d "$dir" ]
 then
     echo "Project dir \"$dir\" already exist."
