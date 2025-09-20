@@ -8,22 +8,22 @@
 # bugs and hints: lrsklemstein@gmail.com
 # ****************************************************************************
 
-
 # ----------------------------------------------------------------------------
 # constants
 # ----------------------------------------------------------------------------
 
 readonly PROG=${0##*/}
 
+readonly VERSION=0.2.0
 
 # ----------------------------------------------------------------------------
 # functions
 # ----------------------------------------------------------------------------
 
 add_pytest_params_to_pyproject_toml() {
-local toml_file=$1
+    local toml_file=$1
 
-/bin/cat >>$toml_file << EOF
+    /bin/cat >>$toml_file <<EOF
 
 [tool.pytest.ini_options]
 pythonpath = "./src"
@@ -38,9 +38,9 @@ EOF
 }
 
 create_pytest_python_uv_makefile() {
-local path="$1"
+    local path="$1"
 
-/bin/cat >$path <<EOF
+    /bin/cat >"$path" <<EOF
 .PHONY: test
 test:
 	uv run pytest -v
@@ -52,37 +52,64 @@ unit_test:
 .PHONY: int_test
 int_test:
 	uv run pytest -m int -v
+
+## Run the app (override ENTRY/ARGS as needed)
+run:
+	uv run python $(ENTRY) $(ARGS)
+
+## Ruff: check (no changes)
+lint:
+	uv run ruff check $(SRC)
+
+## Ruff: check and autofix
+fix:
+	uv run ruff check --fix $(SRC)
+
+## Ruff: formatter (idempotent formatting)
+format:
+	uv run ruff format $(SRC)
+
 EOF
 }
 
-make_uv_run_wrapper() {
-local pyprog="$1"
+create_pyrightcofig() {
+    local path="$1"
 
-local wrapper=${pyprog%.py}
-
-if [ "$pyprog" = "$wrapper" ]
-then
-    echo "Not possible, wrapper would have same name" >&2
-    return 1
-fi
-
-/bin/cat >$wrapper <<EOF
-#!/bin/bash -eu
-
-uv run ./$pyprog "\$@"
+    /bin/cat >"$path" <<EOF
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.11"
+}
 EOF
-
-chmod +x $wrapper
-
 }
 
+#make_uv_run_wrapper() {
+#local pyprog="$1"
+
+#local wrapper=${pyprog%.py}
+
+#if [ "$pyprog" = "$wrapper" ]
+#then
+#    echo "Not possible, wrapper would have same name" >&2
+#    return 1
+#fi
+
+#/bin/cat >$wrapper <<EOF
+##!/bin/bash -eu
+
+#uv run ./$pyprog "\$@"
+#EOF
+
+#chmod +x $wrapper
+
+#}
 
 # ----------------------------------------------------------------------------
 # main
 # ----------------------------------------------------------------------------
 
-if [ $# -ne 1 -a $# -ne 2 ]
-then
+if [ $# -ne 1 ] && [ $# -ne 2 ]; then
     echo -e "\nUsage: ${PROG} DIR [app|lib] (default: app)\n" >&2
     exit 2
 fi
@@ -90,25 +117,22 @@ fi
 readonly dir="$1"
 readonly type="${2:-app}"
 
-if [ $type != app -a $type != lib ]
-then
+if [ $type != app -a $type != lib ]; then
     echo "The (optional) type must be app or lib, but is <$type>" >&2
     exit 1
 fi
 
-if [ -d "$dir" ]
-then
+if [ -d "$dir" ]; then
     echo "Project dir \"$dir\" already exist."
     return 1
 fi
 
-if [ $type != lib -a $type != app ]
-then
+if [ "$type" != lib -a "$type" != app ]; then
     echo "Type must be \"app\" or \"lib\"" >&2
     return 1
 fi
 
-uv init --${type} --vcs git --author-from git "$dir"
+uv init --"${type}" --vcs git --author-from git "$dir"
 
 cd "$dir"
 
@@ -116,14 +140,12 @@ uv add --dev pytest pytest-coverage
 
 mkdir -p ./test/{int,unit}
 
-for sub_dir in test test/{int,unit}
-do
+for sub_dir in test test/{int,unit}; do
     touch "${sub_dir}/__init__.py"
 done
 
-if [ "$type" = app ]
-then
-    mkpy -L ${dir##*/}.py
+if [ "$type" = app ]; then
+    mkpy -L "${dir##*/}.py"
     /bin/rm -f main.py
 fi
 
@@ -131,6 +153,7 @@ add_pytest_params_to_pyproject_toml pyproject.toml
 
 create_pytest_python_uv_makefile Makefile
 
+create_pyrightcofig pyrightconfig.json
 
 git add -A .
 git commit -m "initial version"
