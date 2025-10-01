@@ -8,7 +8,7 @@ fi
 
 PM="$1"   # yarn | npm
 LANG="$2" # js | ts
-DIR="$3"  # target directory
+DIR="$3"
 
 if [[ "$PM" != "yarn" && "$PM" != "npm" ]]; then
     echo "First argument must be 'yarn' or 'npm'"
@@ -31,7 +31,6 @@ else
     npm init -y >/dev/null
 fi
 
-# --- Helper install function ---
 install() {
     if [ "$PM" = "yarn" ]; then
         yarn add -D "$@"
@@ -62,11 +61,12 @@ cat >.eslintrc.json <<'EOF'
     "plugin:prettier/recommended"
   ],
   "rules": {
+    "semi": ["error", "always"],
     "prettier/prettier": [
       "warn",
       {
-        "singleQuote": true,
         "semi": true,
+        "singleQuote": true,
         "trailingComma": "es5",
         "printWidth": 100
       }
@@ -100,11 +100,12 @@ if [ "$LANG" = "ts" ]; then
     "plugin:prettier/recommended"
   ],
   "rules": {
+    "semi": ["error", "always"],
     "prettier/prettier": [
       "warn",
       {
-        "singleQuote": true,
         "semi": true,
+        "singleQuote": true,
         "trailingComma": "es5",
         "printWidth": 100
       }
@@ -118,23 +119,34 @@ fi
 # --- Prettier config ---
 cat >.prettierrc <<'EOF'
 {
-  "singleQuote": true,
   "semi": true,
+  "singleQuote": true,
   "trailingComma": "es5",
   "printWidth": 100
 }
 EOF
 
-# --- VS Code settings (optional, won’t affect CLI) ---
+# --- VS Code settings (enables ESLint auto-fix on save) ---
 mkdir -p .vscode
 cat >.vscode/settings.json <<'EOF'
 {
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
-  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
-  }
+  },
+
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  "prettier.requireConfig": true
 }
 EOF
 
@@ -146,7 +158,9 @@ export function greet(name: string): string {
   return `Hello, ${name}!`;
 }
 
-console.log(greet("World"));
+let number = 1;
+number += 1;
+console.log(greet("World"), number);
 EOF
 else
     cat >src/index.js <<'EOF'
@@ -154,11 +168,13 @@ function greet(name) {
   return `Hello, ${name}!`;
 }
 
-console.log(greet("World"));
+let number = 1;
+number += 1;
+console.log(greet("World"), number);
 EOF
 fi
 
-# --- Add scripts to package.json ---
+# --- Add scripts (start / watch / lint) ---
 if command -v jq >/dev/null 2>&1; then
     tmpfile=$(mktemp)
     jq --arg entry "src/index.$LANG" \
@@ -167,12 +183,12 @@ if command -v jq >/dev/null 2>&1; then
       .scripts.lint = "eslint ." ' \
         package.json >"$tmpfile" && mv "$tmpfile" package.json
 else
-    echo "⚠️ jq not installed: please add these to package.json manually:"
+    echo "⚠️ jq not installed: add these to package.json manually:"
     echo '  "scripts": { "start": "node src/index.js", "watch": "nodemon src/index.js", "lint": "eslint ." }'
 fi
 
 echo "✅ $LANG project created successfully with $PM in $DIR"
 echo "Next steps:"
 echo "  cd $DIR"
-echo "  $PM run watch      # auto-reruns on save"
-echo "  $PM run lint       # check code quality"
+echo "  $PM run watch   # auto-reruns on save"
+echo "  $PM run lint    # lint & auto-fix"
