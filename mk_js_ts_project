@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 <yarn|npm> <js|ts> <project-dir>"
+    exit 1
+fi
+
+PM="$1"   # yarn | npm
+LANG="$2" # js | ts
+DIR="$3"  # target directory
+
+if [[ "$PM" != "yarn" && "$PM" != "npm" ]]; then
+    echo "First argument must be 'yarn' or 'npm'"
+    exit 1
+fi
+if [[ "$LANG" != "js" && "$LANG" != "ts" ]]; then
+    echo "Second argument must be 'js' or 'ts'"
+    exit 1
+fi
+
+mkdir -p "$DIR"
+cd "$DIR"
+
+echo "📦 Initializing $LANG project with $PM in $DIR ..."
+
+# --- Init project ---
+if [ "$PM" = "yarn" ]; then
+    yarn init -y >/dev/null
+else
+    npm init -y >/dev/null
+fi
+
+# --- Helper install function ---
+install() {
+    if [ "$PM" = "yarn" ]; then
+        yarn add -D "$@"
+    else
+        npm install --save-dev "$@"
+    fi
+}
+
+# --- Dependencies ---
+install eslint prettier eslint-config-prettier eslint-plugin-prettier nodemon
+
+if [ "$LANG" = "ts" ]; then
+    install typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin
+    npx tsc --init
+fi
+
+# --- ESLint config ---
+cat >.eslintrc.json <<'EOF'
+{
+  "root": true,
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "plugins": ["prettier"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:prettier/recommended"
+  ],
+  "rules": {
+    "prettier/prettier": [
+      "warn",
+      {
+        "singleQuote": true,
+        "semi": true,
+        "trailingComma": "es5",
+        "printWidth": 100
+      }
+    ]
+  }
+}
+EOF
+
+# --- Adjust ESLint for TS ---
+if [ "$LANG" = "ts" ]; then
+    if command -v jq >/dev/null 2>&1; then
+        tmpfile=$(mktemp)
+        jq '.parser="@typescript-eslint/parser" |
+        .plugins += ["@typescript-eslint"] |
+        .extends += ["plugin:@typescript-eslint/recommended"]' \
+            .eslintrc.json >"$tmpfile" && mv "$tmpfile" .eslintrc.json
+    else
+        cat >.eslintrc.json <<'EOF'
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint", "prettier"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended"
+  ],
+  "rules": {
+    "prettier/prettier": [
+      "warn",
+      {
+        "singleQuote": true,
+        "semi": true,
+        "trailingComma": "es5",
+        "printWidth": 100
+      }
+    ]
+  }
+}
+EOF
+    fi
+fi
+
+# --- Prettier config ---
+cat >.prettierrc <<'EOF'
+{
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "es5",
+  "printWidth": 100
+}
+EOF
+
+# --- VS Code settings (optional, won’t affect CLI) ---
+mkdir -p .vscode
+cat >.vscode/settings.json <<'EOF'
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  }
+}
+EOF
+
+# --- Source directory ---
+mkdir -p src
+if [ "$LANG" = "ts" ]; then
+    cat >src/index.ts <<'EOF'
+export function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+console.log(greet("World"));
+EOF
+else
+    cat >src/index.js <<'EOF'
+function greet(name) {
+  return `Hello, ${name}!`;
+}
+
+console.log(greet("World"));
+EOF
+fi
+
+# --- Add scripts to package.json ---
+if command -v jq >/dev/null 2>&1; then
+    tmpfile=$(mktemp)
+    jq --arg entry "src/index.$LANG" \
+        '.scripts.start = "node \($entry)" |
+      .scripts.watch = "nodemon \($entry)" |
+      .scripts.lint = "eslint ." ' \
+        package.json >"$tmpfile" && mv "$tmpfile" package.json
+else
+    echo "⚠️ jq not installed: please add these to package.json manually:"
+    echo '  "scripts": { "start": "node src/index.js", "watch": "nodemon src/index.js", "lint": "eslint ." }'
+fi
+
+echo "✅ $LANG project created successfully with $PM in $DIR"
+echo "Next steps:"
+echo "  cd $DIR"
+echo "  $PM run watch      # auto-reruns on save"
+echo "  $PM run lint       # check code quality"
