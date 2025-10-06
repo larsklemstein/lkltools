@@ -211,8 +211,13 @@ get_own_repos() {
             | sed -e "s%$HOME/%~/%g" -e 's%/\.git/$%%' >> $tmp_fd
     done
 
-    dmsg "tmd_fd:"
-    [ $DEBUG = y ] && /bin/cat $tmp_fd >&2
+    if [ $DEBUG = y ]
+    then
+        dmsg "tmd_fd:"
+        /bin/cat $tmp_fd >&2
+        local amount=$(wc -l "$tmp_fd" | awk '{print($1)}')
+        dmsg "->${amount} lines."
+    fi
 
     local folder
     local remote
@@ -227,6 +232,13 @@ get_own_repos() {
         fi
     done
 
+    if [ $DEBUG = y ]
+    then
+        dmsg "tmd_own:"
+        local amount=$(wc -l "$tmp_own" | awk '{print($1)}')
+        dmsg "->own: ${amount} lines."
+    fi
+
     /bin/cat "$tmp_own"
     /bin/rm -rf $tmpd
 }
@@ -235,9 +247,13 @@ owned_remote() {
     local remote="${1:-}"
     local git_url
 
+    local remote_normalized=$(sed 's/oauth2:[^@][^@]*@//' <<< "$remote")
+    # local remote_normalized=$(sed 's/oauth2//' <<< "$remote")
+    # echo "normalized: $remote_normalized"
+
     for git_url in $(tr '+' '\n' <<< "$CDP_OWN_REPOS")
     do
-        if [[ "$remote" == $git_url* ]]
+        if [[ "$remote_normalized" == $git_url* ]]
         then
             return 0
         fi
