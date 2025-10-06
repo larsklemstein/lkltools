@@ -1,0 +1,39 @@
+#!/bin/bash -eu
+
+# ****************************************************************************
+# Descriotion
+#   Stupud little tool to interactively (thank you, fzf) choose a eza color theme
+#   Assumption: the colors are stored under $HOME/.config/eza/thenes
+#
+# ****************************************************************************
+
+# bugs and hints: lrsklemstein@gmail.com
+
+readonly EZA_CONF=$HOME/.config/eza
+readonly EZA_THEMES=$EZA_CONF/themes
+
+# --- functions
+
+choose_theme() {
+    local choosen
+    choosen="$(/bin/ls "$EZA_THEMES" | sed 's/\.yml//' | fzf)"
+    [[ -z "$choosen" ]] && return
+
+    echo "$EZA_THEMES/${choosen}.yml"
+}
+
+# --- main
+
+for dir in $EZA_CONF $EZA_THEMES; do
+    if [[ ! -d "$dir" ]]; then
+        echo "dir $dir not found!" >&2
+        exit 1
+    fi
+done
+
+theme=$(choose_theme)
+[[ -z "$theme" ]] && exit 0
+
+theme_link=$EZA_CONF/theme.yml
+
+/bin/ln -sf "$theme" "$theme_link"
