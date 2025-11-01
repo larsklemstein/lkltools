@@ -39,7 +39,11 @@ print_short_usage_and_exit() {
 }
 
 print_long_usage_and_exit() {
+<<<<<<< HEAD
   /bin/cat <<EOF
+=======
+    /bin/cat <<EOF
+>>>>>>> c78e7f8 (add mkpy_project)
 cdp means "cd to project directory". "project directory" means a 
 git controlled folder with or without a remote that belongs to us.
 
@@ -74,7 +78,11 @@ Environment vairables
 
   CDP_OWN_REPOS:    a list of remote base addresses separated by +
 EOF
+<<<<<<< HEAD
   exit 2
+=======
+    exit 2
+>>>>>>> c78e7f8 (add mkpy_project)
 }
 
 show_version_and_exit() {
@@ -103,6 +111,7 @@ abort() {
 }
 
 shell_init() {
+<<<<<<< HEAD
   local cdp_fqf
   cdp_fqf=$(realpath $0 | sed "s%$HOME%\$HOME%")
 
@@ -110,6 +119,14 @@ shell_init() {
   [ "$ignore_no_remote" = n ] && flags+=' -n'
 
   /bin/cat <<EOF
+=======
+    local cdp_fqf=$(realpath $0 | sed "s%$HOME%\$HOME%")
+
+    local flags=
+    [ "$ignore_no_remote" = n ] && flags+=' -n'
+
+    /bin/cat <<EOF
+>>>>>>> c78e7f8 (add mkpy_project)
 
 unalias cdp 2>/dev/null
 
@@ -135,6 +152,7 @@ choose_folder() {
   local ignore_no_remote="$1"
   local fd_depth="$2"
 
+<<<<<<< HEAD
   if cache_is_outdated_or_empty $cache_for; then
     dmsg 'outdated cache, reloading...'
     update_cache
@@ -144,6 +162,17 @@ choose_folder() {
 
   dmsg "Using cache file $CDP_CACHE, call fzf..."
   choosen=$(fzf <"$CDP_CACHE")
+=======
+    if cache_is_outdated_or_empty $cache_for; then
+        dmsg 'outdated cache, reloading...'
+        update_cache
+    else
+        dmsg 'cache is up to date, using it...'
+    fi
+
+    dmsg "Using cache file $CDP_CACHE, call fzf..."
+    choosen=$(fzf <$CDP_CACHE)
+>>>>>>> c78e7f8 (add mkpy_project)
 
   dmsg "...back; choosen: $choosen"
 
@@ -160,9 +189,15 @@ update_cache() {
   /bin/mv "$tmpf" "$CDP_CACHE"
   dmsg "Cache updated"
 
+<<<<<<< HEAD
   if [ ! -s "$CDP_CACHE" ]; then
     dmsg "WARNING: cache is empty"
   fi
+=======
+    if [ ! -s "$CDP_CACHE" ]; then
+        dmsg "WARNING: cache is empty"
+    fi
+>>>>>>> c78e7f8 (add mkpy_project)
 }
 
 cache_is_outdated_or_empty() {
@@ -170,10 +205,28 @@ cache_is_outdated_or_empty() {
 
   test ! -s "$CDP_CACHE" && return 0
 
+<<<<<<< HEAD
   declare -i cache_age
   cache_age=$(get_file_age_in_sec "$CDP_CACHE")
   if [ $cache_age -lt $((cache_for * 60)) ]; then
     dmsg "Cache is still fresh ($cache_age sec old), not reloading"
+=======
+    local cache_age=$(get_file_age_in_sec "$CDP_CACHE")
+    if [ $cache_age -lt $((cache_for * 60)) ]; then
+        dmsg "Cache is still fresh ($cache_age sec old), not reloading"
+        return 1
+    fi
+
+    local base
+    local found
+
+    for base in $(tr '+' '\n' <<<$CDP_BASE_FOLDERS); do
+        found=$(find $base -type d -name '.git' -newer "$CDP_CACHE" 2>/dev/null)
+        test -n "$found" && return 0
+    done
+
+    # OK, you won...
+>>>>>>> c78e7f8 (add mkpy_project)
     return 1
   fi
 
@@ -202,6 +255,7 @@ get_own_repos() {
 
   touch "$tmp_fd" "$tmp_own"
 
+<<<<<<< HEAD
   for root_folder in $(tr '+' '\n' <<<"$CDP_BASE_FOLDERS"); do
     dmsg "Scan root folder ${root_folder}..."
     fd -d"${fd_depth}" -H '^\.git$' -t directory "$root_folder" |
@@ -227,6 +281,19 @@ get_own_repos() {
 
     if [ -z "$remote" ] && [ "$ignore_no_remote" = n ] || owned_remote "$remote"; then
       echo "$folder" >>"$tmp_own"
+=======
+    for root_folder in $(tr '+' '\n' <<<$CDP_BASE_FOLDERS); do
+        dmsg "Scan root folder ${root_folder}..."
+        fd -d${fd_depth} -H '^\.git$' -t directory "$root_folder" |
+            sed -e "s%$HOME/%~/%g" -e 's%/\.git/$%%' >>$tmp_fd
+    done
+
+    if [ $DEBUG = y ]; then
+        dmsg "tmd_fd:"
+        /bin/cat $tmp_fd >&2
+        local amount=$(wc -l "$tmp_fd" | awk '{print($1)}')
+        dmsg "->${amount} lines."
+>>>>>>> c78e7f8 (add mkpy_project)
     fi
   done
 
@@ -237,14 +304,34 @@ get_own_repos() {
     dmsg "->own: ${amount} lines."
   fi
 
+<<<<<<< HEAD
   /bin/cat "$tmp_own"
   /bin/rm -rf "$tmpd"
+=======
+    for folder in $(<$tmp_fd); do
+        eval cd "${folder}"
+        remote=$(git remote -v | awk '/^origin/ && NR==1 {print($2)}')
+        if [ -z "$remote" -a "$ignore_no_remote" = n ] || owned_remote $remote; then
+            echo "$folder" >>$tmp_own
+        fi
+    done
+
+    if [ $DEBUG = y ]; then
+        dmsg "tmd_own:"
+        local amount=$(wc -l "$tmp_own" | awk '{print($1)}')
+        dmsg "->own: ${amount} lines."
+    fi
+
+    grep -v '_TO_BE_DELETED' "$tmp_own"
+    /bin/rm -rf $tmpd
+>>>>>>> c78e7f8 (add mkpy_project)
 }
 
 owned_remote() {
   local remote="${1:-}"
   local git_url
 
+<<<<<<< HEAD
   local remote_normalized
   remote_normalized=$(sed 's/oauth2:[^@][^@]*@//' <<<"$remote")
 
@@ -253,6 +340,19 @@ owned_remote() {
       return 0
     fi
   done
+=======
+    local remote_normalized=$(sed 's/oauth2:[^@][^@]*@//' <<<"$remote")
+    # local remote_normalized=$(sed 's/oauth2//' <<< "$remote")
+    # echo "normalized: $remote_normalized"
+
+    for git_url in $(tr '+' '\n' <<<"$CDP_OWN_REPOS"); do
+        echo "-- $git_url -?> $remote_normalized" >&2
+
+        if [[ "$remote_normalized" == $git_url* ]]; then
+            return 0
+        fi
+    done
+>>>>>>> c78e7f8 (add mkpy_project)
 
   return 1
 }
@@ -260,6 +360,7 @@ owned_remote() {
 get_file_age_in_sec() {
   local unixtime_file
 
+<<<<<<< HEAD
   if [ "$(uname -o)" = Darwin ]; then
     unixtime_file=$(stat -f %B "$1")
   else
@@ -267,6 +368,15 @@ get_file_age_in_sec() {
   fi
 
   echo $(($(/bin/date +%s) - $unixtime_file))
+=======
+    if [ $(uname -o) = Darwin ]; then
+        unixtime_file=$(stat -f %B "$1")
+    else
+        unixtime_file=$(stat -t "$1" | awk '{print($13)}')
+    fi
+
+    echo $(($(/bin/date +%s) - $unixtime_file))
+>>>>>>> c78e7f8 (add mkpy_project)
 }
 
 #-----------------------------------------------------------------------------
@@ -287,6 +397,7 @@ fd_depth=10
 env_file=
 
 while getopts $opt_str arg; do
+<<<<<<< HEAD
   case $arg in
   h) print_long_usage_and_exit ;;
   v) show_version_and_exit ;;
@@ -297,12 +408,25 @@ while getopts $opt_str arg; do
   n) ignore_no_remote="n" ;;
   *) abort "unknown param \"$OPTARG\"" ;;
   esac
+=======
+    case $arg in
+        h) print_long_usage_and_exit ;;
+        v) show_version_and_exit ;;
+        c) cache_for="$OPTARG" ;;
+        e) env_file="$OPTARG" ;;
+        D) DEBUG=y ;;
+        d) fd_depth="$OPTARG" ;;
+        n) ignore_no_remote="n" ;;
+        *) abort "unknown param \"$opt_arg\"" ;;
+    esac
+>>>>>>> c78e7f8 (add mkpy_project)
 
 done
 
 shift $((OPTIND - 1))
 
 if [ $# -ne 1 ]; then
+<<<<<<< HEAD
   msg "Missing command! (please see more comprehensive usage with -h)"
   print_short_usage_and_exit
 fi
@@ -311,6 +435,16 @@ if [ -n "$env_file" ]; then
   if [ ! -f "$env_file" ]; then
     abort "File $env_file does not exist"
   fi
+=======
+    msg "Missing command! (please see more comprehensive usage with -h)"
+    print_short_usage_and_exit
+fi
+
+if [ -n "$env_file" ]; then
+    if [ ! -f "$env_file" ]; then
+        abort "File $env_file does not exist"
+    fi
+>>>>>>> c78e7f8 (add mkpy_project)
 
   msg "Sourcing environment file $env_file"
   source "$env_file"
@@ -318,10 +452,17 @@ fi
 
 set +u
 for env_var in CDP_BASE_FOLDERS CDP_OWN_REPOS; do
+<<<<<<< HEAD
   eval env_content=\$$env_var
   if [ -z "$env_content" ]; then
     abort "env var \$$env_var not set"
   fi
+=======
+    eval env_content=\$$env_var
+    if [ -z "$env_content" ]; then
+        abort "env var \$$env_var not set"
+    fi
+>>>>>>> c78e7f8 (add mkpy_project)
 done
 set -u
 

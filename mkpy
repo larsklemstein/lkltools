@@ -17,7 +17,7 @@
 
 readonly PROG=${0##*/}
 
-readonly MY_VERSION='1.9.1'
+readonly MY_VERSION='1.9.2'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG"
 readonly SHORT_USAGE
@@ -100,7 +100,7 @@ EOF
 }
 
 msg() {
-    echo "[$PROG] $*" >&2
+    echo "[$PROG] $*" >&2
 }
 
 abort() {
@@ -215,7 +215,6 @@ import logging.config
 import os
 import os.path
 import sys
-
 from typing import Any, Dict  # , List, Tuple, Callable
 
 t_setup = Dict[str, Any]

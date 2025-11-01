@@ -1,0 +1,477 @@
+#!/bin/bash -eu
+
+# ****************************************************************************
+# DESCRIPTION
+# Create a unifed uv based python project, following best practices whereever
+# it's feasable.
+#
+# BASE USAGE
+# mkpy_project [options] python_version PROJECT_DIR
+#
+# OPTIONS
+# -h            : show more comprehensive help
+# -v            : show mkpy_project version
+# -e entrypoint : define entrypint (default main:main)
+# -d description: set project description
+# ****************************************************************************
+
+# hint: To auto-generate usage texts, please do not insert blank line(s)
+# after DESCRIPTION, BASE USAGE and OPTIONS headers.
+
+# bugs and hints: lrsklemstein@gmail.com
+
+
+# ----------------------------------------------------------------------------
+# constants
+# ----------------------------------------------------------------------------
+
+readonly PROG=${0##*/}
+readonly MY_VERSION=0.1.0
+
+
+# ----------------------------------------------------------------------------
+#  templates
+# ----------------------------------------------------------------------------
+
+readonly WRAPPER_NAME=caller.sh
+
+readonly TMPL_WRAPPER='#!/usr/bin/env bash
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ENTRYPOINT_NAME="%project_name%"
+
+# --- Resolve the real absolute path of this script (even through multiple symlinks) ---
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  TARGET="$(readlink "$SOURCE")"
+  if [[ "$TARGET" == /* ]]; then
+    SOURCE="$TARGET"
+  else
+    SOURCE="$DIR/$TARGET"
+  fi
+done
+PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+
+VENV_DIR="${PROJECT_DIR}/.venv"
+PYTHON_BIN="${VENV_DIR}/bin/python"
+ENTRY_BIN="${VENV_DIR}/bin/${ENTRYPOINT_NAME}"
+
+exec "${ENTRY_BIN}" "$@"'
+
+readonly TMPL_MAKEFILE='.PHONY: test lint format typecheck test_types all_checks
+
+PYTEST_CMD = uv run pytest -v
+RUFF_CMD   = uv run ruff
+MYPY_CMD   = uv run mypy
+
+test:
+	@echo "Running tests..."
+	@$(PYTEST_CMD)
+
+lint:
+	@echo "Running linter (ruff check)..."
+	@$(RUFF_CMD) check .
+
+format:
+	@echo "Formatting code..."
+	@$(RUFF_CMD) format .
+
+typecheck:
+	@echo "Running type checks (mypy)..."
+	@$(MYPY_CMD)
+
+# Alias target for readability / CI integration
+test_types: typecheck
+
+all_checks: lint test_types test
+	@echo "All checks passed successfully."'
+
+readonly TMPL_PROJECT_TOML='[project]
+name = "%project_name%"
+version = "0.1.0"
+description = "%project_description%"
+readme = "README.md"
+requires-python = ">=%python_min_version%"
+dependencies = []
+
+[project.scripts]
+%project_name% = "%project_name%.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+extend = "ruff.toml"
+
+[tool.mypy]
+config_file = "mypy.ini" 
+
+[tool.setuptools.packages.find]
+where = ["src"]'
+
+readonly TMPL_RUFF_TOML='
+line-length = 79
+target-version = "%target_version%"
+
+[lint]
+select = ["E", "F", "I"]
+ignore = []
+
+[format]
+quote-style = "double"'
+
+readonly TMPL_MYPY_INI='[mypy]
+files = src/
+python_version = %python_version%
+warn_unused_configs = True
+disallow_untyped_defs = True
+check_untyped_defs = True
+strict_optional = True
+ignore_missing_imports = True'
+
+readonly TMPL_PRE_COMMIT_CONFIG_YAML='repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.3
+    hooks:
+      - id: ruff
+        name: ruff lint
+        entry: uv run --active ruff check
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --active ruff format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run --active mypy
+        language: system
+        types: [python]
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: uv run --active pytest
+        language: system
+        pass_filenames: false
+        always_run: true'
+
+readonly TMPL_GITIGNORE='
+__pycache__/
+*.py[cod]
+
+build/
+dist/
+*.egg-info/
+
+.venv/
+.env/
+.uv/
+
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+*.log
+
+.DS_Store
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+.idea/
+
+*.swp
+*.swo'
+
+readonly TMPL_INIT_PYTEST='
+def test_pytest_base():
+    pass
+
+'
+
+readonly TMPL_DOCKERFILE='########## Stage 1: Builder ##########
+FROM python:%python_version%-alpine AS builder
+
+RUN apk add --no-cache bash curl
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | bash
+ENV PATH="/root/.local/bin:${PATH}"
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock README.md ./
+COPY src ./src
+COPY %wrapper_name% %project_name% ./
+
+RUN uv sync --frozen --no-dev
+
+########## Stage 2: Runtime ##########
+FROM python:%python_version%-alpine AS runtime
+
+RUN apk add --no-cache \
+    bash \
+    vim \
+    curl \
+    wget \
+    busybox-extras
+
+WORKDIR /app
+
+COPY --from=builder /app/.venv .venv
+COPY src ./src
+COPY %wrapper_name% %project_name% ./
+
+RUN chmod +x %wrapper_name%
+
+ENV PATH="/app/.venv/bin:${PATH}"
+
+ENTRYPOINT ["./%project_name%"]'
+
+# ----------------------------------------------------------------------------
+# functions
+# ----------------------------------------------------------------------------
+
+print_usage_and_exit() {
+    show_description
+    exit 2
+}
+
+#!/usr/bin/env bash
+
+# Global variable example:
+# PROG="myprogram"
+
+msg() {
+    local green="\033[0;32m"
+    local reset="\033[0m"
+    printf "%b[%s]%b %s\n" "$green" "$PROG" "$reset" "$1" >&2
+}
+
+abort() {
+    local red="\033[0;31m"
+    local reset="\033[0m"
+    printf "%b[%s ABORT]%b %s\n" "$red" "$PROG" "$reset" "$1" >&2
+}
+
+__crash_handler() {
+    local lineno=$(caller | cut -d' ' -f1)
+
+    echo -e "\n!!! Script $0 crashed @ line $lineno:" >&2
+    sed -n ${lineno}p $0 >&2
+
+    exit 1
+}
+
+assert_installed() {
+    local tool="1"
+    which mise >/dev/null || abort "$tool is required to run this program"
+}
+
+print_version_and_exit() {
+    echo "This is $PROG version $MY_VERSION"
+    exit 0
+}
+
+show_description() {
+    sed -n '/^#\ *DESCRIPTION/, /^# *BASE USAGE/ p' "$0" \
+    | egrep -v '^# *(DESCRIPTION|BASE USAGE)' | sed 's/^# *//'
+}
+
+show_base_usage() {
+    grep -A1 "^# BASE USAGE" "$0" | tail -1 | sed 's/^# *//'
+}
+
+show_options() {
+    sed -n '/^# *OPTIONS/, /^# *\*\*\*/p' "$0" \
+    | egrep -v '^# (OPTIONS|\*)' | sed 's/^# *//'
+}
+
+print_short_usage_and_exit() {
+    usage=$(show_base_usage)
+    echo "usage: $usage" >&2
+    exit 2
+}
+
+print_long_usage_and_exit() {
+description=$(show_description)
+base_usage=$(show_base_usage)
+options=$(show_options)
+
+cat << _eof_
+# Description
+
+$description
+
+
+# Base usage
+
+$base_usage
+
+
+# Options
+
+$options
+_eof_
+exit 0
+}
+
+
+# ----------------------------------------------------------------------------
+# main
+# ----------------------------------------------------------------------------
+
+assert_installed mkpy
+assert_installed uv
+assert_installed mise
+assert_installed pre-commit
+
+trap __crash_handler ERR
+
+wrapper=
+description=
+entrypoint=main:main
+
+OPTERR=1
+
+while getopts hvw:d:e: opt
+do
+    case $opt in
+        h)
+            print_long_usage_and_exit
+            ;;
+        v)
+            print_version_and_exit
+            ;;
+        d)
+            description="$OPTARG"
+            ;;
+        e)
+            entrypoint="$OPTARG"
+            ;;
+        w)
+            wrapper=$OPTARG
+            ;;
+        *)
+            echo >&2
+            print_short_usage_and_exit
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ $# -eq 2 ] || print_short_usage_and_exit
+
+python_version="$1"
+project_dir="$2"
+
+[ -z "$wrapper" ] && wrapper="$(basename project)"
+
+project_dir="$(realpath $project_dir)"
+wrapper_path="${project_dir}/${wrapper}"
+
+[[ "$entrypoint" != *:* ]] && \
+    abort "entrypoint must have the form package:function (e.g. \"main:main\")"
+
+project_name=$(basename $project_dir)
+[ -z "$description" ] && description="$project_name"
+
+[[ -e "$project_dir" ]] && abort "path $project_dir already exists!"
+
+mkdir -p "$project_dir"
+cd "$project_dir"
+msg "Created project dir $project_dir"
+
+mise use python@${python_version}
+msg "Project python version set to $python_version"
+
+if [[ "$python_version" == 3.*.* ]]
+then
+    python_min_uv_version="${python_version%.*}"
+else
+    python_min_uv_version="${python_version}"
+fi
+
+sed -e "s/%project_name%/$project_name/g" \
+    -e "s/%project_description%/$description/g" \
+    -e "s/%python_min_version%/$python_min_uv_version/g" \
+    -e "s/%entrypoint%/${project_name}.main:main/g" \
+    <<< "$TMPL_PROJECT_TOML" > pyproject.toml
+msg "Created pyproject.toml"
+
+py_minor_version=$(python3 -c "import sys; print(sys.version_info.minor)")
+
+ruff_target_version="py3${py_minor_version}"
+sed -e "s/%target_version%/$ruff_target_version/g" \
+    <<< "$TMPL_RUFF_TOML" > ruff.toml
+msg "Created ruff.toml"
+
+mypy_python_version="3.${py_minor_version}"
+
+sed -e "s/%python_version%/$mypy_python_version/g" \
+    <<< "$TMPL_MYPY_INI" > mypy.ini
+msg "Created mypy.ini"
+
+/bin/cat >README.md << EOF
+# ${project_name}
+
+Your description here...
+EOF
+
+mkdir -p src/${project_name} tests
+
+echo "$TMPL_INIT_PYTEST" > tests/test_pytest_base.py
+echo "$TMPL_MAKEFILE" > Makefile
+
+sed "s/%project_name%/$project_name/" <<< "$TMPL_WRAPPER" > $WRAPPER_NAME
+chmod +x $WRAPPER_NAME
+ln -s $WRAPPER_NAME "${project_name}"
+
+msg "Created program wrapper ${project_name} for convience"
+
+uv sync
+msg "uv project initiliazed"
+
+uv add --dev pytest pytest-coverage mypy 
+msg "Added project dev dependencies"
+
+echo "$TMPL_PRE_COMMIT_CONFIG_YAML" > .pre-commit-config.yaml
+
+entrypoint_path="./src/${project_name}/${entrypoint%:*}.py"
+mkpy $entrypoint_path
+touch ./src/${project_name}/__init__.py
+msg "Created entrypoint script"
+
+echo "$TMPL_GITIGNORE"  >.gitignore
+
+docker_python_version="3.${py_minor_version}"
+
+sed -e "s/%project_name%/$project_name/g" \
+    -e "s/%wrapper_name%/$WRAPPER_NAME/g" \
+    -e "s/%python_version%/$docker_python_version/g" \
+    <<< "$TMPL_DOCKERFILE" > Dockerfile
+
+msg "Created Dockerfile"
+
+git init
+git add -A .
+git commit -m "initial version"
+
+msg "Git activated"
+
+pre-commit install --install-hooks
+msg "pre-commit checker activated"
+
+echo
+msg "Done."
