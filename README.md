@@ -40,6 +40,12 @@ Create a more or less fancy mise configuration for your project.
 
 Scaffold a simple python3 program incl. argparse and logging
 
+### mkpy_project
+
+Scaffold a not so simple python3 project (ruff, mypy, Dockerfile, pre_commit)
+
+Scaffold a simple python3 program incl. argparse and logging
+
 ### mkjs
 
 Scaffold a javascript project (yarn based)
