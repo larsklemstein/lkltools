@@ -142,8 +142,18 @@ choose_folder() {
     dmsg 'cache is up to date, using it...'
   fi
 
-  dmsg "Using cache file $CDP_CACHE, call fzf..."
-  choosen=$(fzf <"$CDP_CACHE")
+  local tmpf
+  tmpf=$(mktemp)
+
+  for dir in $(<"$CDP_CACHE")
+  do
+    test -d "$dir" && echo "$dir"
+  done >"$tmpf"
+
+  dmsg "Using cache file $CDP_CACHE (for existing dirs), call fzf..."
+  choosen=$(fzf <"$tmpf")
+
+  /bin/rm -f "$tmpf"
 
   dmsg "...back; choosen: $choosen"
 
