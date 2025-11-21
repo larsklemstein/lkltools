@@ -1,5 +1,7 @@
 #!/bin/bash -eu
 
+# set -x
+
 # ****************************************************************************
 # DESCRIPTION
 # cdp == cd to (git controlled) project
@@ -147,7 +149,7 @@ choose_folder() {
 
   for dir in $(<"$CDP_CACHE")
   do
-    test -d "$dir" && echo "$dir"
+    test -d "$dir" && echo "$dir" || echo "Missing: ->${dir}<-" >&2
   done >"$tmpf"
 
   dmsg "Using cache file $CDP_CACHE (for existing dirs), call fzf..."
@@ -192,6 +194,7 @@ cache_is_outdated_or_empty() {
 
   for base in $(tr '+' '\n' <<<"$CDP_BASE_FOLDERS"); do
     found=$(find "$base" -type d -name '.git' -newer "$CDP_CACHE" 2>/dev/null)
+    echo "found: $found"
     test -n "$found" && return 0
   done
 
@@ -215,7 +218,7 @@ get_own_repos() {
   for root_folder in $(tr '+' '\n' <<<"$CDP_BASE_FOLDERS"); do
     dmsg "Scan root folder ${root_folder}..."
     fd -d"${fd_depth}" -H '^\.git$' -t directory "$root_folder" |
-      sed -e "s%$HOME/%~/%g" -e 's%/\.git/$%%' >>"$tmp_fd"
+      sed -e 's%/\.git/$%%' >>"$tmp_fd"
   done
 
   if [ $DEBUG = y ]; then
