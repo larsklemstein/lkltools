@@ -238,8 +238,12 @@ get_own_repos() {
     eval cd "${folder}"
     remote=$(git remote -v | awk '/^origin/ && NR==1 {print($2)}')
 
-    if [ -z "$remote" ] && [ "$ignore_no_remote" = n ] || owned_remote "$remote"; then
+    if [ -z "$remote" ] && [ "$ignore_no_remote" = n ] || owned_remote "$remote"
+    then
+      dmsg "Final decision: $folder is owned" 
       echo "$folder" >>"$tmp_own"
+    else
+      dmsg "Final decision: $folder is NOT owned" 
     fi
   done
 
@@ -296,7 +300,7 @@ opt_str=hvnDd:c:e:
 
 ignore_no_remote=y
 declare -i cache_for=0
-fd_depth=10
+fd_depth=12
 env_file=
 
 while getopts $opt_str arg; do
@@ -316,7 +320,7 @@ done
 shift $((OPTIND - 1))
 
 if [ $# -ne 1 ]; then
-  msg "Missing command! (please see more comprehensive usage with -h)"
+  msg "Missing command! Please see more comprehensive usage with -h"
   print_short_usage_and_exit
 fi
 
