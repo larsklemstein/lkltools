@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# entr wrapper
+#
+
+
+if [ $# -eq 0 ]
+then
+    echo "Need something to execute..." >&2
+    exit 2
+fi
+
+ls -d * | entr rcexec $*

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# kind of a helper helper: execute something and then
+# print the rc code in green or red
+
+
+clear
+
+$* 
+rc=$?
+
+if [ $rc -eq  0 ]
+then
+    printf '\033[32m[rc=%s]\033[0m' "$rc"
+else
+    printf '\033[31m[rc=%s]\033[0m' "$rc"
+fi
