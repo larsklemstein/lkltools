@@ -17,7 +17,7 @@
 
 readonly PROG=${0##*/}
 
-readonly MY_VERSION='1.9.2'
+readonly MY_VERSION='1.10.0'
 
 SHORT_USAGE="$PROG [-h] [options] PYPROG"
 readonly SHORT_USAGE
@@ -38,6 +38,7 @@ log_ini=n
 async=n
 force_mode=n
 create_uv_caller=n
+new_prog_name=
 
 description="Here you should add a short description at least!
 
@@ -87,11 +88,13 @@ $SHORT_USAGE
 options:
     -h: show this help
     -v: show $PROG version
-    -f: force mode (overwrite files and directories if required)
-    -a: create asynchronious run function
-    -u: create uv caller (e.g. mytool for mytool.py)
-    -d: set program description (for usage)
-    -L: create logging ini file
+
+    -f:      force mode (overwrite files and directories if required)
+    -a:      create asynchronious run function
+    -p name: set program name explicitely
+    -u:      create uv caller (e.g. mytool for mytool.py)
+    -d:      set program description (for usage)
+    -L:      create logging ini file
 
 bugs and hints: lrsklemstein@gmail.com
 EOF
@@ -130,8 +133,9 @@ EOF
 # ----------------------------------------------------------------------------
 # main
 # ----------------------------------------------------------------------------
+#
 
-while getopts afvLhu opt; do
+while getopts afvLhup: opt; do
     case $opt in
         h)
             print_long_usage_and_exit
@@ -144,6 +148,9 @@ while getopts afvLhu opt; do
             ;;
         f)
             force_mode=y
+            ;;
+        p)
+            new_prog_name=$OPTARG
             ;;
         u)
             create_uv_caller=y
@@ -221,6 +228,7 @@ t_setup = Dict[str, Any]
 
 __LOG_LEVEL_DEFAULT = logging.INFO
 
+PROG_NAME = "${new_prog_name}"
 
 def main() -> None:
     ${setup_getter}
@@ -269,6 +277,9 @@ def get_prog_name() -> str:
     """Returns the name of the program, without path and extension *OR
     take the value from the environment variable __PY_CALLER__ if set.
     """
+
+    if PROG_NAME != '':
+        return PROG_NAME
 
     py_caller_var = '__PY_CALLER__'
 

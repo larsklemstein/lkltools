@@ -2,8 +2,8 @@
 
 # ****************************************************************************
 # DESCRIPTION
-# Create a unifed uv based python project, following best practices whereever
-# it's feasable.
+# Create a unifed uv based python project (program or package), following
+# best practices where ever it's feasable.
 #
 # BASE USAGE
 # mkpy_project [options] python_version PROJECT_DIR
@@ -11,6 +11,7 @@
 # OPTIONS
 # -h            : show more comprehensive help
 # -v            : show mkpy_project version
+# -p            : create a python package, not a program
 # -e entrypoint : define entrypint (default main:main)
 # -d description: set project description
 # ****************************************************************************
@@ -26,7 +27,7 @@
 # ----------------------------------------------------------------------------
 
 readonly PROG=${0##*/}
-readonly MY_VERSION=0.1.0
+readonly MY_VERSION=0.2.0
 
 
 # ----------------------------------------------------------------------------
@@ -341,11 +342,12 @@ trap __crash_handler ERR
 
 wrapper=
 description=
+package_mode=n
 entrypoint=main:main
 
 OPTERR=1
 
-while getopts hvw:d:e: opt
+while getopts hpvw:d:e: opt
 do
     case $opt in
         h)
@@ -353,6 +355,9 @@ do
             ;;
         v)
             print_version_and_exit
+            ;;
+        p)
+            package_mode=y
             ;;
         d)
             description="$OPTARG"
@@ -378,7 +383,7 @@ project_dir="$2"
 
 [ -z "$wrapper" ] && wrapper="$(basename project)"
 
-project_dir="$(realpath $project_dir)"
+# project_dir="$(realpath $project_dir)"
 wrapper_path="${project_dir}/${wrapper}"
 
 [[ "$entrypoint" != *:* ]] && \
@@ -434,11 +439,13 @@ mkdir -p src/${project_name} tests
 echo "$TMPL_INIT_PYTEST" > tests/test_pytest_base.py
 echo "$TMPL_MAKEFILE" > Makefile
 
-sed "s/%project_name%/$project_name/" <<< "$TMPL_WRAPPER" > $WRAPPER_NAME
-chmod +x $WRAPPER_NAME
-ln -s $WRAPPER_NAME "${project_name}"
-
-msg "Created program wrapper ${project_name} for convience"
+if [ "$package_mode" = n ]
+then
+    sed "s/%project_name%/$project_name/" <<< "$TMPL_WRAPPER" > $WRAPPER_NAME
+    chmod +x $WRAPPER_NAME
+    ln -s $WRAPPER_NAME "${project_name}"
+    msg "Created program wrapper ${project_name} for convience"
+fi
 
 uv sync
 msg "uv project initiliazed"
@@ -448,21 +455,25 @@ msg "Added project dev dependencies"
 
 echo "$TMPL_PRE_COMMIT_CONFIG_YAML" > .pre-commit-config.yaml
 
-entrypoint_path="./src/${project_name}/${entrypoint%:*}.py"
-mkpy $entrypoint_path
-touch ./src/${project_name}/__init__.py
-msg "Created entrypoint script"
-
 echo "$TMPL_GITIGNORE"  >.gitignore
 
-docker_python_version="3.${py_minor_version}"
+touch ./src/${project_name}/__init__.py
 
-sed -e "s/%project_name%/$project_name/g" \
-    -e "s/%wrapper_name%/$WRAPPER_NAME/g" \
-    -e "s/%python_version%/$docker_python_version/g" \
-    <<< "$TMPL_DOCKERFILE" > Dockerfile
+if [ "$package_mode" = n ]
+then
+    docker_python_version="3.${py_minor_version}"
 
-msg "Created Dockerfile"
+    entrypoint_path="./src/${project_name}/${entrypoint%:*}.py"
+    mkpy $entrypoint_path
+    msg "Created entrypoint script"
+
+    sed -e "s/%project_name%/$project_name/g" \
+        -e "s/%wrapper_name%/$WRAPPER_NAME/g" \
+        -e "s/%python_version%/$docker_python_version/g" \
+        <<< "$TMPL_DOCKERFILE" > Dockerfile
+
+    msg "Created Dockerfile"
+fi
 
 git init
 git add -A .
