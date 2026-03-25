@@ -2,7 +2,7 @@
 
 # ****************************************************************************
 # DESCRIOTION
-# cd == change file
+# cfn == change file name
 #
 # Change means (currently) to add a prefix and/or a postfix
 # ****************************************************************************
