@@ -1,0 +1,59 @@
+#!/bin/bash 
+
+# ****************************************************************************
+# DESCRIOTION
+# cd == change file
+#
+# Change means (currently) to add a prefix and/or a postfix
+# ****************************************************************************
+
+# bugs and hints: lrsklemstein@gmail.com
+
+
+set -euo pipefail
+
+readonly PROG=$(basename $0)
+
+abort() {
+    echo "[$PROG] $*" >&2
+    exit 1
+}
+
+print_usage_and_exit() {
+    echo "Usage: $PROG [prefix] FILENAME [postfix]" >&2
+    exit 2
+}
+
+prefix=
+postfix=
+
+if [ $# -eq 2 ]
+then
+    if [ -f "$1" ]
+    then
+        file="$1"
+        postfix="$2"
+    elif [ -f "$2" ]
+    then
+        file="$2"
+        prefix="$1"
+    else
+       abort "With two args, either the first or second must exist as a file" 
+    fi
+elif [ $# -eq 3 ]
+then
+    prefix="$1"
+    file="$2"
+    postfix="$3"
+else
+    print_usage_and_exit
+fi
+
+dirname=$(dirname "$file")
+basename=$(basename "$file")
+
+new_name="${dirname}/${prefix}${basename}${postfix}"
+
+[ -f "$new_name" ] && abort "File $new_name already exist!"
+
+mv "$file" "$new_name"
