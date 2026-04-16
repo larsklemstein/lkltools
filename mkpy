@@ -1,5 +1,6 @@
 #!/bin/bash -eu
 
+
 # ****************************************************************************
 # DESCRIPTION
 #   Staffold a simple python3 program incl. argparse and logging
